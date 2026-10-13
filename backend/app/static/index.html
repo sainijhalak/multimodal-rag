@@ -3,408 +3,302 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Local Multimodal RAG Agent | Offline Consumer AI</title>
+  <title>Multimodal AI Assistant | Local & Offline</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    body { font-family: 'Inter', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
     code, pre { font-family: 'JetBrains Mono', monospace; }
-    .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-    .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
-  <!-- Header -->
-  <header class="glass sticky top-0 z-50 border-b border-slate-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <i class="fa-solid fa-brain text-white text-lg"></i>
+  <!-- Top Minimal Nav -->
+  <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20">
+          <i class="fa-solid fa-sparkles text-sm"></i>
         </div>
-        <div>
-          <h1 class="font-bold text-lg leading-tight tracking-tight flex items-center gap-2">
-            Multimodal RAG Agent
-            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">100% Offline & Free</span>
-          </h1>
-          <p class="text-xs text-slate-400">Google EmbeddingGemma-2 • Qwen2.5-0.5B • LanceDB</p>
-        </div>
+        <span class="font-bold text-sm tracking-tight text-white">Multimodal AI</span>
       </div>
 
-      <!-- Telemetry Stats -->
-      <div class="flex items-center space-x-3 text-xs">
-        <div class="glass px-3 py-1.5 rounded-lg flex items-center gap-2" id="gpu-telemetry">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-slate-300 font-medium" id="gpu-name">Detecting GPU...</span>
-          <span class="text-slate-500">|</span>
-          <span class="text-indigo-400 font-mono" id="vram-stat">0 MB VRAM</span>
-        </div>
-        <div class="glass px-3 py-1.5 rounded-lg flex items-center gap-2">
-          <i class="fa-solid fa-database text-purple-400"></i>
-          <span class="text-slate-300 font-medium" id="doc-count">0 items</span>
-        </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="gpu-status">RTX 3050 Ti • Local</span>
+        </span>
       </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
+  <!-- Main Centered Content -->
+  <main class="max-w-3xl mx-auto px-4 py-8 flex-1 flex flex-col w-full">
     
-    <!-- Left Sidebar: Ingestion & Filter Controls (4 cols) -->
-    <div class="lg:col-span-4 space-y-6">
+    <!-- Hero / Welcome Header -->
+    <div id="hero" class="text-center my-auto py-10 transition-all duration-300">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center mx-auto text-white text-2xl shadow-xl shadow-indigo-500/20 mb-4">
+        <i class="fa-solid fa-brain"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-white tracking-tight">What would you like to find?</h2>
+      <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+        Search and ask questions across your documents, images, audio clips, and video keyframes.
+      </p>
+
+      <!-- Quick Suggested Prompts -->
+      <div class="flex flex-wrap justify-center gap-2 mt-6">
+        <button onclick="setQuery('How do I maintain my car engine and prevent wear?')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+          🚗 Engine maintenance
+        </button>
+        <button onclick="setQuery('red sports car speeding on the highway')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+          🏎️ Red car in video & image
+        </button>
+        <button onclick="setQuery('emergency warning siren beep and alarm sound')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+          🚨 Siren alarm sound
+        </button>
+        <button onclick="setQuery('silicon microchip and printed circuit board')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+          💻 Circuit board keyframe
+        </button>
+      </div>
+    </div>
+
+    <!-- Results Section (Initially Hidden) -->
+    <div id="results-area" class="space-y-6 hidden mb-8">
       
-      <!-- Ingestion Card -->
-      <div class="glass rounded-2xl p-5 shadow-xl">
-        <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <i class="fa-solid fa-cloud-arrow-up text-indigo-400"></i> File Ingestion
-        </h2>
-        <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 text-center transition-all cursor-pointer bg-slate-900/50 hover:bg-indigo-950/20">
-          <input type="file" id="file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
-          <div class="w-12 h-12 mx-auto rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-3">
-            <i class="fa-solid fa-file-arrow-up text-xl"></i>
-          </div>
-          <p class="text-sm font-medium text-slate-300">Drop files or click to upload</p>
-          <p class="text-xs text-slate-500 mt-1">Supports Text, Image, Audio & Video</p>
-          <div class="flex justify-center gap-1.5 mt-3 text-[11px] text-slate-400">
-            <span class="px-1.5 py-0.5 rounded bg-slate-800">.txt</span>
-            <span class="px-1.5 py-0.5 rounded bg-slate-800">.png</span>
-            <span class="px-1.5 py-0.5 rounded bg-slate-800">.wav</span>
-            <span class="px-1.5 py-0.5 rounded bg-slate-800">.mp4</span>
-          </div>
+      <!-- User Query Echo -->
+      <div class="flex items-start gap-3">
+        <div class="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs text-slate-400 shrink-0 mt-0.5">
+          <i class="fa-solid fa-user"></i>
         </div>
-        <div id="upload-status" class="mt-3 text-xs hidden"></div>
+        <div class="text-sm font-medium text-slate-200 pt-1" id="query-display"></div>
       </div>
 
-      <!-- Modality Filter Card -->
-      <div class="glass rounded-2xl p-5 shadow-xl">
-        <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <i class="fa-solid fa-layer-group text-purple-400"></i> Modality Filter
-        </h2>
-        <div class="grid grid-cols-2 gap-2 text-xs font-medium" id="modality-filters">
-          <button data-modality="" class="mod-btn active px-3 py-2 rounded-xl border border-indigo-500/50 bg-indigo-500/20 text-indigo-300 flex items-center gap-2 transition">
-            <i class="fa-solid fa-shapes"></i> All Modalities
-          </button>
-          <button data-modality="text" class="mod-btn px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
-            <i class="fa-solid fa-file-lines text-blue-400"></i> Documents
-          </button>
-          <button data-modality="image" class="mod-btn px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
-            <i class="fa-solid fa-image text-emerald-400"></i> Images
-          </button>
-          <button data-modality="audio" class="mod-btn px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
-            <i class="fa-solid fa-volume-high text-amber-400"></i> Audio
-          </button>
-          <button data-modality="video" class="mod-btn col-span-2 px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
-            <i class="fa-solid fa-film text-pink-400"></i> Video Keyframes (1 FPS)
-          </button>
+      <!-- AI Answer Card -->
+      <div class="flex items-start gap-3 bg-slate-900/60 rounded-2xl p-5 border border-slate-800">
+        <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs text-white shrink-0 mt-0.5 shadow-md shadow-indigo-600/30">
+          <i class="fa-solid fa-sparkles"></i>
+        </div>
+        <div class="flex-1">
+          <div class="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-1.5">AI Answer</div>
+          <div id="ai-answer" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"></div>
         </div>
       </div>
 
-      <!-- Quick Queries -->
-      <div class="glass rounded-2xl p-5 shadow-xl">
-        <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <i class="fa-solid fa-bolt text-amber-400"></i> Quick Demonstrations
-        </h2>
-        <div class="space-y-2 text-xs">
-          <button onclick="setQuery('How do I prevent my vehicle engine from wearing out?')" class="w-full text-left p-2.5 rounded-lg bg-slate-900/50 hover:bg-slate-800/80 border border-slate-800 text-slate-300 transition flex items-center justify-between">
-            <span>🚗 Vehicle maintenance advice</span>
-            <i class="fa-solid fa-chevron-right text-slate-600 text-[10px]"></i>
-          </button>
-          <button onclick="setQuery('red sports car speeding on the highway')" class="w-full text-left p-2.5 rounded-lg bg-slate-900/50 hover:bg-slate-800/80 border border-slate-800 text-slate-300 transition flex items-center justify-between">
-            <span>🏎️ Find sports car in video & image</span>
-            <i class="fa-solid fa-chevron-right text-slate-600 text-[10px]"></i>
-          </button>
-          <button onclick="setQuery('emergency warning siren beep and alarm sound')" class="w-full text-left p-2.5 rounded-lg bg-slate-900/50 hover:bg-slate-800/80 border border-slate-800 text-slate-300 transition flex items-center justify-between">
-            <span>🚨 Retrieve audio siren clip</span>
-            <i class="fa-solid fa-chevron-right text-slate-600 text-[10px]"></i>
-          </button>
-          <button onclick="setQuery('silicon microchip and printed circuit board')" class="w-full text-left p-2.5 rounded-lg bg-slate-900/50 hover:bg-slate-800/80 border border-slate-800 text-slate-300 transition flex items-center justify-between">
-            <span>💻 Circuit board in video at 00:02</span>
-            <i class="fa-solid fa-chevron-right text-slate-600 text-[10px]"></i>
-          </button>
+      <!-- Sources / Evidence Grid -->
+      <div id="sources-container" class="space-y-3">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+          <span>Sources & Evidence</span>
+          <span id="timing-badge" class="font-mono text-slate-500 text-[11px]"></span>
         </div>
+        <div id="sources-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
       </div>
 
     </div>
 
-    <!-- Right Main Column: Search & Chat (8 cols) -->
-    <div class="lg:col-span-8 flex flex-col space-y-6">
+    <!-- Fixed / Sticky Bottom Search Box (ChatGPT style) -->
+    <div class="mt-auto sticky bottom-4 z-40">
       
-      <!-- Query Box -->
-      <div class="glass rounded-2xl p-5 shadow-2xl">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <button id="mode-ask" onclick="switchMode('ask')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition">
-              <i class="fa-solid fa-sparkles mr-1"></i> Ask AI (Full RAG)
-            </button>
-            <button id="mode-search" onclick="switchMode('search')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/60 text-slate-400 hover:text-slate-200 transition">
-              <i class="fa-solid fa-magnifying-glass mr-1"></i> Similarity Search
-            </button>
-          </div>
-          <span class="text-xs text-slate-500 font-mono">Top-K: 4</span>
+      <!-- Upload notification badge -->
+      <div id="upload-status" class="hidden mb-2 px-3 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-800 text-xs text-indigo-300 text-center animate-fade-in"></div>
+
+      <!-- Input Bar Container -->
+      <div class="bg-slate-900 border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition">
+        
+        <!-- Filter Tabs (Clean Pills) -->
+        <div class="flex items-center gap-1 px-2 pb-2 border-b border-slate-800/80 text-xs overflow-x-auto">
+          <span class="text-[11px] text-slate-500 font-medium mr-1">Filter:</span>
+          <button data-modality="" class="mod-pill active px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium text-[11px] transition">All</button>
+          <button data-modality="text" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">📄 Text</button>
+          <button data-modality="image" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">🖼️ Images</button>
+          <button data-modality="audio" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">🎵 Audio</button>
+          <button data-modality="video" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">🎬 Video</button>
         </div>
 
-        <form id="search-form" class="relative">
+        <!-- Text Input & Buttons -->
+        <form id="search-form" class="flex items-center gap-2 pt-2 px-2">
+          
+          <!-- Hidden File Upload -->
+          <input type="file" id="file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
+          <button 
+            type="button" 
+            onclick="document.getElementById('file-input').click()" 
+            title="Upload any file (Text, Image, Audio, Video)" 
+            class="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition shrink-0"
+          >
+            <i class="fa-solid fa-paperclip text-sm"></i>
+          </button>
+
+          <!-- Input -->
           <input 
             type="text" 
             id="query-input" 
-            placeholder="Ask a question or search across text, images, audio, and video..." 
-            class="w-full bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3.5 pr-28 text-sm placeholder-slate-500 outline-none transition text-slate-100"
+            placeholder="Ask a question or search across all media..." 
+            class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100"
             required
+            autocomplete="off"
           >
+
+          <!-- Submit Button -->
           <button 
             type="submit" 
-            id="submit-btn" 
-            class="absolute right-2 top-2 bottom-2 px-5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-lg text-xs font-semibold text-white transition flex items-center gap-2 shadow-md"
+            id="send-btn" 
+            class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
           >
-            <span id="btn-text">Execute</span>
-            <i class="fa-solid fa-arrow-right" id="btn-icon"></i>
+            <i class="fa-solid fa-arrow-up text-sm"></i>
           </button>
         </form>
       </div>
 
-      <!-- Results Display Section -->
-      <div id="results-container" class="space-y-6 flex-1">
-        
-        <!-- Welcome Initial State -->
-        <div id="empty-state" class="glass rounded-2xl p-12 text-center border border-slate-800">
-          <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-400 mx-auto flex items-center justify-center text-2xl mb-4">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-          </div>
-          <h3 class="text-lg font-semibold text-slate-200">Multimodal Agent Ready</h3>
-          <p class="text-sm text-slate-400 max-w-md mx-auto mt-2">
-            Ask any question to retrieve and synthesize answers across text manuals, visual images, synthesized audio sirens, and 1 FPS video frames!
-          </p>
-        </div>
-
-        <!-- AI Generative Answer Card (Hidden by default) -->
-        <div id="answer-card" class="glass rounded-2xl p-6 border border-indigo-500/20 shadow-2xl hidden">
-          <div class="flex items-center gap-2 text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-3">
-            <i class="fa-solid fa-robot"></i> Grounded AI Response (Qwen2.5)
-          </div>
-          <div id="ai-answer-text" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-normal"></div>
-        </div>
-
-        <!-- Retrieved Multimodal Sources -->
-        <div id="sources-section" class="space-y-4 hidden">
-          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Retrieved Multimodal Evidence</span>
-            <span id="retrieval-time" class="text-slate-500 font-mono text-[11px]"></span>
-          </h3>
-          <div id="sources-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-
-      </div>
-
+      <p class="text-[11px] text-slate-500 text-center mt-2">
+        Runs 100% locally on your RTX 3050 Ti GPU • No data leaves your machine • $0 cloud cost
+      </p>
     </div>
 
   </main>
 
   <script>
-    let activeMode = 'ask';
     let activeModality = '';
 
-    // Switch between Ask and Search mode
-    function switchMode(mode) {
-      activeMode = mode;
-      const askBtn = document.getElementById('mode-ask');
-      const searchBtn = document.getElementById('mode-search');
-      if (mode === 'ask') {
-        askBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition';
-        searchBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/60 text-slate-400 hover:text-slate-200 transition';
-        document.getElementById('btn-text').textContent = 'Ask RAG';
-      } else {
-        searchBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition';
-        askBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/60 text-slate-400 hover:text-slate-200 transition';
-        document.getElementById('btn-text').textContent = 'Search';
-      }
-    }
-
-    // Set query from quick buttons
+    // Quick Prompt
     function setQuery(text) {
       document.getElementById('query-input').value = text;
       document.getElementById('search-form').dispatchEvent(new Event('submit'));
     }
 
-    // Modality filter buttons
-    document.querySelectorAll('.mod-btn').forEach(btn => {
+    // Modality Filter Pills
+    document.querySelectorAll('.mod-pill').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.mod-btn').forEach(b => {
-          b.className = 'mod-btn px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200 transition flex items-center gap-2';
+        document.querySelectorAll('.mod-pill').forEach(b => {
+          b.className = 'mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition';
         });
-        btn.className = 'mod-btn active px-3 py-2 rounded-xl border border-indigo-500/50 bg-indigo-500/20 text-indigo-300 flex items-center gap-2 transition';
+        btn.className = 'mod-pill active px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium text-[11px] transition';
         activeModality = btn.getAttribute('data-modality');
       });
     });
 
-    // Health Telemetry
-    async function fetchHealth() {
-      try {
-        const res = await fetch('/health/');
-        const data = await res.json();
-        document.getElementById('gpu-name').textContent = data.device || 'CUDA';
-        document.getElementById('vram-stat').textContent = `${data.vram_allocated_mb} MB VRAM`;
-        document.getElementById('doc-count').textContent = `${data.total_documents_indexed} items in DB`;
-      } catch (e) {
-        console.error('Health check failed', e);
-      }
-    }
-    fetchHealth();
-    setInterval(fetchHealth, 10000);
-
-    // Form Submit (Ask / Search)
+    // Form Submit (Ask RAG)
     document.getElementById('search-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const query = document.getElementById('query-input').value.trim();
+      const input = document.getElementById('query-input');
+      const query = input.value.trim();
       if (!query) return;
 
-      const submitBtn = document.getElementById('submit-btn');
-      const btnText = document.getElementById('btn-text');
-      const emptyState = document.getElementById('empty-state');
-      const answerCard = document.getElementById('answer-card');
-      const sourcesSection = document.getElementById('sources-section');
-      const sourcesGrid = document.getElementById('sources-grid');
-      const aiAnswerText = document.getElementById('ai-answer-text');
+      const hero = document.getElementById('hero');
+      const resultsArea = document.getElementById('results-area');
+      const queryDisplay = document.getElementById('query-display');
+      const aiAnswer = document.getElementById('ai-answer');
+      const sendBtn = document.getElementById('send-btn');
+      const timingBadge = document.getElementById('timing-badge');
 
-      // Loading state
-      btnText.textContent = 'Processing...';
-      submitBtn.disabled = true;
-      emptyState.classList.add('hidden');
+      // UI Transition
+      hero.classList.add('hidden');
+      resultsArea.classList.remove('hidden');
+      queryDisplay.textContent = query;
+      aiAnswer.innerHTML = '<span class="text-slate-400 italic flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Thinking & retrieving multimodal evidence...</span>';
+      sendBtn.disabled = true;
 
       const startTime = performance.now();
 
       try {
-        if (activeMode === 'ask') {
-          // Full RAG
-          const res = await fetch('/query/ask', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: query, top_k: 4, modality: activeModality || null })
-          });
-          const data = await res.json();
-          const elapsed = Math.round(performance.now() - startTime);
+        const res = await fetch('/query/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: query,
+            top_k: 4,
+            modality: activeModality || null
+          })
+        });
 
-          answerCard.classList.remove('hidden');
-          aiAnswerText.textContent = data.answer || 'No direct answer returned.';
-          renderSources(data.sources || [], elapsed);
-        } else {
-          // Similarity Search only
-          answerCard.classList.add('hidden');
-          const res = await fetch('/query/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: query, top_k: 4, modality: activeModality || null })
-          });
-          const data = await res.json();
-          const elapsed = Math.round(performance.now() - startTime);
-          renderSources(data.results || [], elapsed);
-        }
+        const data = await res.json();
+        const elapsed = Math.round(performance.now() - startTime);
+        timingBadge.textContent = `${elapsed}ms`;
+
+        aiAnswer.textContent = data.answer || 'No direct answer returned.';
+        renderSources(data.sources || []);
       } catch (err) {
-        alert('Query failed: ' + err.message);
+        aiAnswer.innerHTML = `<span class="text-red-400">Error: ${err.message}</span>`;
       } finally {
-        submitBtn.disabled = false;
-        switchMode(activeMode);
-        fetchHealth();
+        sendBtn.disabled = false;
+        input.value = '';
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       }
     });
 
-    // Render retrieved sources
-    function renderSources(sources, elapsedMs) {
-      const sourcesSection = document.getElementById('sources-section');
-      const sourcesGrid = document.getElementById('sources-grid');
-      const retrievalTime = document.getElementById('retrieval-time');
+    // Render Evidence Cards
+    function renderSources(sources) {
+      const grid = document.getElementById('sources-grid');
+      grid.innerHTML = '';
 
-      sourcesSection.classList.remove('hidden');
-      sourcesGrid.innerHTML = '';
-      retrievalTime.textContent = `Completed in ${elapsedMs}ms`;
-
-      if (sources.length === 0) {
-        sourcesGrid.innerHTML = '<div class="col-span-2 text-slate-500 text-sm italic">No matching results found.</div>';
+      if (!sources || sources.length === 0) {
+        grid.innerHTML = '<p class="text-xs text-slate-500 italic col-span-2">No direct sources found.</p>';
         return;
       }
 
-      sources.forEach((item, idx) => {
+      sources.forEach(item => {
         const mod = (item.modality || 'text').toLowerCase();
         const card = document.createElement('div');
-        card.className = 'glass-card rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition';
+        card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between hover:border-slate-700 transition';
 
-        let badgeColor = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-        let icon = 'fa-file-lines';
-        if (mod === 'image') { badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'; icon = 'fa-image'; }
-        if (mod === 'audio') { badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/20'; icon = 'fa-volume-high'; }
-        if (mod === 'video') { badgeColor = 'bg-pink-500/10 text-pink-400 border-pink-500/20'; icon = 'fa-film'; }
+        let badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">TEXT</span>';
+        if (mod === 'image') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IMAGE</span>';
+        if (mod === 'audio') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">AUDIO</span>';
+        if (mod === 'video') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-pink-500/10 text-pink-400 border border-pink-500/20">VIDEO</span>';
 
-        let mediaPreview = '';
         const filename = item.content ? item.content.split('/').pop() : item.source;
+        let preview = '';
 
         if (mod === 'image') {
-          mediaPreview = `
-            <div class="mt-3 rounded-lg overflow-hidden border border-slate-800 bg-slate-900 aspect-video flex items-center justify-center">
+          preview = `
+            <div class="mt-2 rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
               <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover">
             </div>`;
         } else if (mod === 'audio') {
-          mediaPreview = `
-            <div class="mt-3">
-              <audio controls class="w-full h-8 rounded bg-slate-900 border border-slate-800">
+          preview = `
+            <div class="mt-2">
+              <audio controls class="w-full h-7 rounded bg-slate-950">
                 <source src="/uploads/${filename}" type="audio/wav">
-                Your browser does not support audio playback.
               </audio>
             </div>`;
         } else if (mod === 'video') {
-          // If frame file
-          const frameName = filename.endsWith('.jpg') ? filename : filename;
-          mediaPreview = `
-            <div class="mt-3 rounded-lg overflow-hidden border border-slate-800 bg-slate-900 aspect-video relative flex items-center justify-center">
-              <img src="/uploads/frames/${frameName}" alt="${item.title}" class="w-full h-full object-cover">
-              <span class="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] px-2 py-0.5 rounded border border-white/20">
+          preview = `
+            <div class="mt-2 rounded-lg overflow-hidden border border-slate-800 aspect-video relative bg-black flex items-center justify-center">
+              <img src="/uploads/frames/${filename}" alt="${item.title}" class="w-full h-full object-cover">
+              <span class="absolute bottom-1.5 right-1.5 bg-black/80 font-mono text-[10px] text-white px-1.5 py-0.5 rounded border border-white/20">
                 Keyframe
               </span>
             </div>`;
         } else {
-          // Text content snippet
-          mediaPreview = `
-            <div class="mt-3 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs text-slate-300 font-mono max-h-24 overflow-y-auto leading-relaxed">
+          preview = `
+            <div class="mt-2 p-2 rounded bg-slate-950 text-[11px] text-slate-300 font-mono max-h-20 overflow-y-auto leading-relaxed border border-slate-800/80">
               ${item.content || item.title}
             </div>`;
         }
 
         card.innerHTML = `
           <div>
-            <div class="flex items-center justify-between text-xs mb-2">
-              <span class="px-2 py-0.5 rounded-full border text-[10px] font-semibold flex items-center gap-1.5 ${badgeColor}">
-                <i class="fa-solid ${icon}"></i> ${mod.toUpperCase()}
-              </span>
-              <span class="text-slate-400 font-mono text-[11px]">Sim: ${(item.similarity || 0).toFixed(4)}</span>
+            <div class="flex items-center justify-between text-xs mb-1">
+              ${badge}
+              <span class="text-[11px] font-mono text-slate-400">Match: ${Math.round((item.similarity || 0) * 100)}%</span>
             </div>
-            <h4 class="text-sm font-semibold text-slate-100 truncate">${item.title || filename}</h4>
-            <p class="text-xs text-slate-500 truncate">Source: ${item.source}</p>
+            <div class="text-xs font-semibold text-white truncate">${item.title || filename}</div>
+            <div class="text-[11px] text-slate-500 truncate">${item.source}</div>
           </div>
-          ${mediaPreview}
+          ${preview}
         `;
-        sourcesGrid.appendChild(card);
+        grid.appendChild(card);
       });
     }
 
-    // Drag and Drop Upload
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    const uploadStatus = document.getElementById('upload-status');
+    // File Upload Handler
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('border-indigo-500');
-      if (e.dataTransfer.files.length > 0) uploadFile(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files.length > 0) uploadFile(fileInput.files[0]);
-    });
-
-    async function uploadFile(file) {
-      uploadStatus.classList.remove('hidden');
-      uploadStatus.innerHTML = `<span class="text-indigo-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Ingesting ${file.name}...</span>`;
+      const status = document.getElementById('upload-status');
+      status.classList.remove('hidden');
+      status.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Uploading and indexing <b>${file.name}</b>...`;
 
       const formData = new FormData();
       formData.append('file', file);
@@ -413,15 +307,30 @@
         const res = await fetch('/ingest/file', { method: 'POST', body: formData });
         const data = await res.json();
         if (res.ok) {
-          uploadStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-check mr-1"></i> Successfully ingested <b>${data.filename}</b> (${data.chunks_created} vectors)!</span>`;
-          fetchHealth();
+          status.className = 'mb-2 px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-800 text-xs text-emerald-300 text-center animate-fade-in';
+          status.innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Ingested <b>${data.filename}</b> into LanceDB (${data.chunks_created} vectors)!`;
+          setTimeout(() => status.classList.add('hidden'), 5000);
         } else {
-          uploadStatus.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${data.detail || 'Upload failed'}</span>`;
+          status.className = 'mb-2 px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in';
+          status.textContent = 'Upload failed: ' + (data.detail || 'Unknown error');
         }
       } catch (err) {
-        uploadStatus.innerHTML = `<span class="text-red-400">Upload failed: ${err.message}</span>`;
+        status.className = 'mb-2 px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in';
+        status.textContent = 'Upload failed: ' + err.message;
       }
+    });
+
+    // Check GPU Status
+    async function checkHealth() {
+      try {
+        const res = await fetch('/health/');
+        const data = await res.json();
+        if (data.device) {
+          document.getElementById('gpu-status').textContent = `${data.device.replace('NVIDIA GeForce ', '').replace(' Laptop GPU', '')} • ${data.total_documents_indexed} items`;
+        }
+      } catch (e) {}
     }
+    checkHealth();
   </script>
 </body>
 </html>
