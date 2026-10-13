@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Sparkles, CloudArrowUp, MessageSquare, FolderOpen, 
-  ArrowUp, User, Bot, RefreshCw, ExternalLink 
+  Sparkles, Paperclip, ArrowUp, X, Check, Loader2, 
+  RotateCcw, Music, Video, Image as ImageIcon, FileText, Upload
 } from 'lucide-react';
 
 interface SourceItem {
@@ -14,407 +14,470 @@ interface SourceItem {
   similarity: number;
 }
 
-interface UploadedFileItem {
-  name: string;
-  extension: string;
-  modality: string;
-  size: string;
-  url: string;
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content?: string;
+  sources?: SourceItem[];
+  fileUpload?: {
+    name: string;
+    status: 'uploading' | 'success' | 'error';
+  };
 }
 
 export default function Home() {
   const [apiUrl, setApiUrl] = useState<string>(
     process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   );
-  const [activeTab, setActiveTab] = useState<'chat' | 'upload'>('chat');
-  const [gpuStatus, setGpuStatus] = useState<string>('RTX 3050 Ti • Local');
-  const [query, setQuery] = useState<string>('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState<string>('');
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
-  const [displayedQuery, setDisplayedQuery] = useState<string | null>(null);
-  const [sources, setSources] = useState<SourceItem[]>([]);
-  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-  const [fileList, setFileList] = useState<UploadedFileItem[]>([]);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
-  const fetchHealthAndFiles = async () => {
-    try {
-      const res = await fetch(`${apiUrl}/health/`);
-      if (res.ok) {
-        const data = await res.json();
-        const dev = data.device ? data.device.replace('NVIDIA GeForce ', '').replace(' Laptop GPU', '') : 'CUDA';
-        setGpuStatus(`${dev} • ${data.total_documents_indexed || 0} items`);
-      }
-    } catch (e) {}
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dragCounter = useRef<number>(0);
 
-    try {
-      const resFiles = await fetch(`${apiUrl}/ingest/list`);
-      if (resFiles.ok) {
-        const data = await resFiles.json();
-        setFileList(data.files || []);
-      }
-    } catch (e) {}
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    fetchHealthAndFiles();
-  }, [apiUrl]);
+    scrollToBottom();
+  }, [messages, loading]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  // Drag and drop listeners
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current += 1;
+      setIsDragging(true);
+    };
 
-    const q = query.trim();
-    setDisplayedQuery(q);
-    setQuery('');
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current -= 1;
+      if (dragCounter.current <= 0) {
+        dragCounter.current = 0;
+        setIsDragging(false);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsDragging(false);
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        setAttachedFile(e.dataTransfer.files[0]);
+      }
+    };
+
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('drop', handleDrop);
+    };
+  }, []);
+
+  const handleSendMessage = async (customPrompt?: string) => {
+    const text = (customPrompt !== undefined ? customPrompt : input).trim();
+    if (!text && !attachedFile) return;
+
+    const fileToUpload = attachedFile;
+    setAttachedFile(null);
+    setInput('');
+
+    // If there is an attached file, upload & index it first
+    if (fileToUpload) {
+      const uploadMsgId = 'upload-' + Date.now();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: uploadMsgId,
+          role: 'system',
+          fileUpload: { name: fileToUpload.name, status: 'uploading' },
+        },
+      ]);
+
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
+
+      try {
+        const res = await fetch(`${apiUrl}/ingest/file`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === uploadMsgId
+                ? {
+                    ...m,
+                    fileUpload: { name: fileToUpload.name, status: 'success' },
+                  }
+                : m
+            )
+          );
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === uploadMsgId
+                ? {
+                    ...m,
+                    fileUpload: { name: fileToUpload.name, status: 'error' },
+                  }
+                : m
+            )
+          );
+        }
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === uploadMsgId
+              ? {
+                  ...m,
+                  fileUpload: { name: fileToUpload.name, status: 'error' },
+                }
+              : m
+          )
+        );
+      }
+    }
+
+    if (!text) return;
+
+    // Add user message
+    const userMsgId = 'user-' + Date.now();
+    setMessages((prev) => [
+      ...prev,
+      { id: userMsgId, role: 'user', content: text },
+    ]);
+
     setLoading(true);
-    setAiAnswer(null);
-    setSources([]);
-    setActiveTab('chat');
-    const start = performance.now();
 
     try {
       const res = await fetch(`${apiUrl}/query/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q, top_k: 4 }),
+        body: JSON.stringify({ query: text, top_k: 4 }),
       });
       const data = await res.json();
-      setAiAnswer(data.answer || 'No direct answer returned.');
-      setSources(data.sources || []);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'bot-' + Date.now(),
+          role: 'assistant',
+          content: data.answer || 'I could not find an answer in your files.',
+          sources: (data.sources || []).filter(
+            (s: SourceItem) => s.similarity >= 0.55
+          ),
+        },
+      ]);
     } catch (err: any) {
-      setAiAnswer('Request error: ' + err.message);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'bot-' + Date.now(),
+          role: 'assistant',
+          content: `Error connecting to AI backend: ${err.message}`,
+        },
+      ]);
     } finally {
-      setElapsedMs(Math.round(performance.now() - start));
       setLoading(false);
     }
   };
 
-  const handleFileUpload = async (file: File) => {
-    setUploadStatus(`Indexing ${file.name} on GPU...`);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch(`${apiUrl}/ingest/file`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUploadStatus(`✓ Successfully indexed ${data.filename}!`);
-        fetchHealthAndFiles();
-        setTimeout(() => setUploadStatus(null), 5000);
-      } else {
-        setUploadStatus(`Error: ${data.detail || 'Upload failed'}`);
-      }
-    } catch (err: any) {
-      setUploadStatus(`Upload failed: ${err.message}`);
-    }
+  const resetChat = () => {
+    setMessages([]);
+    setAttachedFile(null);
+    setInput('');
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-      {/* Top Navbar */}
-      <header className="border-b border-slate-900 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
+    <div className="min-h-screen flex flex-col bg-[#0f1117] text-slate-100 selection:bg-indigo-500 selection:text-white relative">
+      {/* Fullscreen Drag & Drop Overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center border-2 border-dashed border-indigo-500 m-4 rounded-3xl pointer-events-none">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-3xl mb-4 border border-indigo-500/30 animate-bounce">
+            <Upload className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-white">Drop file to upload & index</h3>
+          <p className="text-sm text-slate-400 mt-1">Supports PDF, Audio (.mp3, .wav), Video (.mp4), and Images</p>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="border-b border-slate-800/60 bg-[#0f1117]/80 backdrop-blur sticky top-0 z-40">
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs shadow-md shadow-indigo-600/30">
               <Sparkles className="w-4 h-4" />
             </div>
-            <div>
-              <span className="font-bold text-base tracking-tight text-white block leading-tight">Multimodal AI</span>
-              <span className="text-[11px] text-slate-400">Local Consumer AI Agent</span>
-            </div>
+            <span className="font-semibold text-sm tracking-tight text-white">Multimodal AI</span>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`px-4 py-1.5 rounded-lg flex items-center gap-2 transition ${
-                activeTab === 'chat'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Ask & Search</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('upload');
-                fetchHealthAndFiles();
-              }}
-              className={`px-4 py-1.5 rounded-lg flex items-center gap-2 transition ${
-                activeTab === 'upload'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <CloudArrowUp className="w-3.5 h-3.5" />
-              <span>Upload Files</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-indigo-300">
-                {fileList.length}
-              </span>
-            </button>
-          </div>
-
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            {gpuStatus}
-          </span>
+          <button
+            onClick={resetChat}
+            className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition flex items-center gap-1.5 border border-transparent hover:border-slate-700"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>New Chat</span>
+          </button>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="max-w-4xl mx-auto px-4 py-6 flex-1 flex flex-col w-full">
-        
-        {/* ============================================================= */}
-        {/* TAB 1: CHAT & SEARCH                                         */}
-        {/* ============================================================= */}
-        {activeTab === 'chat' && (
-          <div className="flex-1 flex flex-col w-full">
-            {!displayedQuery && (
-              <div className="text-center my-auto py-10">
-                <div className="w-16 h-16 rounded-3xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto text-2xl shadow-xl mb-4">
-                  <Sparkles className="w-8 h-8" />
-                </div>
-                <h2 className="text-3xl font-bold text-white tracking-tight">Ask anything across your knowledge</h2>
-                <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
-                  Ask questions, search for documents, listen to songs, or pinpoint video scenes.
-                </p>
-
-                <div className="flex flex-wrap justify-center gap-2 mt-6 max-w-xl mx-auto">
-                  {[
-                    { label: '🎵 Play Jhalak Dikhla Ja', text: 'Jhalak Dikhla Ja song and music audio' },
-                    { label: '🚗 Car engine maintenance', text: 'How do I maintain my car engine and prevent wear?' },
-                    { label: '🏎️ Red sports car in video', text: 'red sports car speeding on the highway' },
-                    { label: '💻 Circuit board keyframe', text: 'silicon microchip and printed circuit board' },
-                  ].map((item, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setQuery(item.text);
-                      }}
-                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition"
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+      <main className="max-w-3xl mx-auto px-4 py-6 flex-1 flex flex-col w-full">
+        <div className="flex-1 space-y-6 pb-28">
+          {messages.length === 0 && (
+            <div className="text-center my-auto py-12">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center mx-auto text-2xl mb-4 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+                <Sparkles className="w-6 h-6" />
               </div>
-            )}
+              <h2 className="text-2xl font-bold text-white tracking-tight">How can I help you today?</h2>
+              <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
+                Ask questions across your documents, listen to songs, search photos, or pinpoint video scenes.
+              </p>
 
-            {displayedQuery && (
-              <div className="space-y-6 mb-8">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs text-slate-300 shrink-0 mt-0.5">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div className="text-base font-semibold text-white pt-1">{displayedQuery}</div>
+              {/* Upload Drop Zone Card in Welcome Screen */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-6 mx-auto max-w-md p-4 rounded-2xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition flex items-center gap-3.5 group text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 flex items-center justify-center text-base shrink-0 transition">
+                  <Upload className="w-4 h-4" />
                 </div>
-
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                  <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2.5">
-                    <Sparkles className="w-3.5 h-3.5" /> AI Answer
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-slate-200 group-hover:text-white transition">
+                    Upload any document, audio, image, or video
                   </div>
-                  {loading ? (
-                    <p className="text-sm text-slate-400 italic">Searching files & generating grounded answer...</p>
-                  ) : (
-                    <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{aiAnswer}</p>
+                  <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                    Click to browse, or drag & drop files anywhere
+                  </div>
+                </div>
+                <span className="text-xs text-slate-500 group-hover:text-indigo-400 transition font-medium">Browse</span>
+              </div>
+
+              {/* Suggestions */}
+              <div className="flex flex-wrap justify-center gap-2 mt-6 max-w-md mx-auto">
+                {[
+                  'Play Jhalak Dikhla Ja song',
+                  'How do I maintain my car engine and prevent wear?',
+                  'Show me the red sports car',
+                ].map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSendMessage(prompt)}
+                    className="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Conversation history */}
+          {messages.map((msg) => {
+            if (msg.role === 'system' && msg.fileUpload) {
+              return (
+                <div key={msg.id} className="flex justify-end">
+                  {msg.fileUpload.status === 'uploading' && (
+                    <div className="bg-indigo-600/20 border border-indigo-500/30 text-indigo-200 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading & indexing <b>{msg.fileUpload.name}</b>...</span>
+                    </div>
+                  )}
+                  {msg.fileUpload.status === 'success' && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Indexed <b>{msg.fileUpload.name}</b> into your knowledge base</span>
+                    </div>
+                  )}
+                  {msg.fileUpload.status === 'error' && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-300 text-xs px-3.5 py-2 rounded-xl">
+                      Failed to upload {msg.fileUpload.name}
+                    </div>
                   )}
                 </div>
+              );
+            }
 
-                {sources.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      <span>Matching Evidence</span>
-                      {elapsedMs && <span className="font-mono text-slate-500 text-[11px]">{elapsedMs}ms</span>}
-                    </div>
+            if (msg.role === 'user') {
+              return (
+                <div key={msg.id} className="flex justify-end">
+                  <div className="bg-indigo-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed shadow-sm">
+                    {msg.content}
+                  </div>
+                </div>
+              );
+            }
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {sources.map((item, idx) => {
+            return (
+              <div key={msg.id} className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-lg bg-slate-800 text-indigo-400 flex items-center justify-center shrink-0 text-xs mt-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                    {msg.content}
+                  </div>
+
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                      {msg.sources.map((item, idx) => {
                         const mod = (item.modality || 'text').toLowerCase();
                         const filename = item.content ? item.content.split('/').pop() : item.source;
 
                         return (
-                          <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition shadow-lg">
-                            <div>
-                              <div className="flex items-center justify-between text-xs mb-2">
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                  {mod.toUpperCase()}
-                                </span>
-                                <span className="text-xs font-mono text-indigo-400 font-semibold">
-                                  {Math.round((item.similarity || 0) * 100)}% Match
-                                </span>
-                              </div>
-                              <div className="text-sm font-bold text-white truncate">{item.title || filename}</div>
-                              <div className="text-xs text-slate-500 truncate">{item.source}</div>
-                            </div>
-
-                            {mod === 'image' && (
-                              <div className="mt-3 rounded-xl overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
-                                <img src={`${apiUrl}/uploads/${filename}`} alt={item.title} className="w-full h-full object-cover" />
-                              </div>
-                            )}
-
+                          <div key={idx} className="bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between">
                             {mod === 'audio' && (
-                              <div className="mt-3 bg-slate-950 p-2 rounded-xl border border-slate-800">
-                                <audio controls className="w-full h-9 rounded">
+                              <>
+                                <div className="flex items-center justify-between text-xs mb-2">
+                                  <span className="font-medium text-slate-200 truncate">{item.title || filename}</span>
+                                  <span className="text-[10px] text-amber-400 font-mono">AUDIO</span>
+                                </div>
+                                <audio controls className="w-full h-8 rounded mt-1 bg-slate-950">
                                   <source src={`${apiUrl}/uploads/${filename}`} type="audio/mpeg" />
                                   <source src={`${apiUrl}/uploads/${filename}`} type="audio/wav" />
                                 </audio>
-                              </div>
+                              </>
+                            )}
+
+                            {mod === 'image' && (
+                              <>
+                                <div className="flex items-center justify-between text-xs mb-1.5">
+                                  <span className="font-medium text-slate-200 truncate">{item.title || filename}</span>
+                                  <span className="text-[10px] text-emerald-400 font-mono">IMAGE</span>
+                                </div>
+                                <div className="rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
+                                  <img src={`${apiUrl}/uploads/${filename}`} alt={item.title} className="w-full h-full object-cover" />
+                                </div>
+                              </>
                             )}
 
                             {mod === 'video' && (
-                              <div className="mt-3 rounded-xl overflow-hidden border border-slate-800 aspect-video relative bg-black flex items-center justify-center">
-                                <img src={`${apiUrl}/uploads/frames/${filename}`} alt={item.title} className="w-full h-full object-cover" />
-                                <span className="absolute bottom-2 right-2 bg-black/80 font-mono text-[10px] text-white px-2 py-0.5 rounded-md border border-white/20">
-                                  Keyframe
-                                </span>
-                              </div>
+                              <>
+                                <div className="flex items-center justify-between text-xs mb-1.5">
+                                  <span className="font-medium text-slate-200 truncate">{item.title || filename}</span>
+                                  <span className="text-[10px] text-pink-400 font-mono">VIDEO</span>
+                                </div>
+                                <div className="rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black relative flex items-center justify-center">
+                                  <img src={`${apiUrl}/uploads/frames/${filename}`} alt={item.title} className="w-full h-full object-cover" />
+                                  <span className="absolute bottom-1.5 right-1.5 bg-black/80 font-mono text-[9px] text-white px-1.5 py-0.5 rounded">
+                                    Keyframe
+                                  </span>
+                                </div>
+                              </>
                             )}
 
                             {mod === 'text' && (
-                              <div className="mt-3 p-3 rounded-xl bg-slate-950 text-xs text-slate-300 font-mono max-h-24 overflow-y-auto leading-relaxed border border-slate-800/80">
-                                {item.content || item.title}
-                              </div>
+                              <>
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="font-medium text-slate-200 truncate">{item.title || filename}</span>
+                                  <span className="text-[10px] text-blue-400 font-mono">DOC</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed mt-1 font-mono">
+                                  {item.content || item.title}
+                                </p>
+                              </>
                             )}
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {loading && (
+            <div className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-slate-800 text-indigo-400 flex items-center justify-center shrink-0 text-xs mt-1">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-sm text-slate-400 italic flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking...
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Fixed Bottom Input Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f1117] via-[#0f1117] to-transparent pt-6 pb-4 z-30">
+          <div className="max-w-3xl mx-auto px-4">
+            {/* Attached file preview chip */}
+            {attachedFile && (
+              <div className="mb-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-indigo-500/40 text-xs text-indigo-300 shadow-sm animate-fade-in">
+                <Paperclip className="w-3 h-3" />
+                <span className="font-medium truncate max-w-xs">{attachedFile.name}</span>
+                <button onClick={() => setAttachedFile(null)} className="text-slate-400 hover:text-white ml-1">
+                  <X className="w-3 h-3" />
+                </button>
               </div>
             )}
 
-            {/* Bottom Search Bar */}
-            <div className="mt-auto sticky bottom-4 z-40 pt-2">
-              <div className="bg-slate-900 border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition">
-                <form onSubmit={handleSearch} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('upload')}
-                    title="Upload new file"
-                    className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition shrink-0"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                  </button>
-
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Ask anything or search your files (e.g. 'Play Jhalak Dikhla Ja', 'car maintenance')..."
-                    className="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2.5 px-1"
-                    required
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </button>
-                </form>
-              </div>
-
-              <p className="text-[11px] text-slate-500 text-center mt-2">
-                Runs 100% locally on your NVIDIA RTX 3050 Ti GPU • Completely Private & Free
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================= */}
-        {/* TAB 2: UPLOAD & KNOWLEDGE LIBRARY VIEW                        */}
-        {/* ============================================================= */}
-        {activeTab === 'upload' && (
-          <div className="space-y-6 w-full">
-            <div className="bg-slate-900 border-2 border-dashed border-indigo-500/40 hover:border-indigo-500 rounded-3xl p-8 sm:p-12 text-center transition bg-indigo-950/10">
+            <div className="bg-slate-900/90 backdrop-blur border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition flex items-center gap-2">
               <input
                 type="file"
-                id="tab-file-upload"
+                ref={fileInputRef}
                 className="hidden"
                 accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv"
                 onChange={(e) => {
-                  if (e.target.files?.[0]) handleFileUpload(e.target.files[0]);
+                  if (e.target.files?.[0]) {
+                    setAttachedFile(e.target.files[0]);
+                  }
                 }}
               />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach a file (PDF, MP3, MP4, JPG)"
+                className="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition shrink-0"
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
 
-              <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto text-3xl mb-4">
-                <CloudArrowUp className="w-8 h-8" />
-              </div>
-
-              <h3 className="text-xl font-bold text-white">Upload Any File to Knowledge Base</h3>
-              <p className="text-sm text-slate-400 max-w-md mx-auto mt-2">
-                Drag and drop files here, or click the button below to browse.
-              </p>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Message Multimodal AI, or attach a file..."
+                className="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2 px-1"
+              />
 
               <button
                 type="button"
-                onClick={() => document.getElementById('tab-file-upload')?.click()}
-                className="mt-6 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-lg shadow-indigo-600/30 inline-flex items-center gap-2"
+                onClick={() => handleSendMessage()}
+                disabled={loading}
+                className="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
               >
-                <FolderOpen className="w-4 h-4" />
-                <span>Choose Files to Upload</span>
+                <ArrowUp className="w-4 h-4" />
               </button>
-
-              <div className="flex flex-wrap justify-center gap-2 mt-6 text-xs text-slate-400">
-                <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">📄 PDF / Text (.pdf, .txt, .md)</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🖼️ Images (.png, .jpg)</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🎵 Audio (.mp3, .wav)</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🎬 Video (.mp4, .mkv)</span>
-              </div>
-
-              {uploadStatus && (
-                <div className="mt-6 p-3 rounded-xl bg-indigo-950/90 border border-indigo-800 text-sm text-indigo-300 max-w-md mx-auto">
-                  {uploadStatus}
-                </div>
-              )}
-            </div>
-
-            {/* List of Files */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <span>Your Indexed Files</span>
-                  <span className="text-xs font-normal text-slate-400">({fileList.length} files)</span>
-                </h3>
-                <button
-                  onClick={fetchHealthAndFiles}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Refresh List
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {fileList.map((f, i) => (
-                  <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate" title={f.name}>{f.name}</p>
-                      <p className="text-[10px] text-slate-500">{f.size} • {f.modality.toUpperCase()}</p>
-                    </div>
-                    <a
-                      href={`${apiUrl}${f.url}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-7 h-7 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition shrink-0 ml-2"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
-        )}
-
+        </div>
       </main>
     </div>
   );

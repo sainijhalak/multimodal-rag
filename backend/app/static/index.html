@@ -3,469 +3,446 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multimodal AI Assistant | Local & Offline</title>
+  <title>Multimodal AI</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    code, pre { font-family: 'JetBrains Mono', monospace; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .chat-scroll::-webkit-scrollbar { width: 6px; }
+    .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+    .chat-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 9999px; }
+    .drag-active { border-color: #6366f1 !important; background-color: rgba(99, 102, 241, 0.08) !important; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-[#0f1117] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white relative">
 
-  <!-- Top Navbar -->
-  <header class="border-b border-slate-900 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-      
-      <!-- Brand -->
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
-          <i class="fa-solid fa-sparkles text-sm"></i>
+  <!-- Fullscreen Drag & Drop Overlay -->
+  <div id="drop-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center border-2 border-dashed border-indigo-500 m-4 rounded-3xl pointer-events-none opacity-0 transition-opacity duration-200">
+    <div class="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-3xl mb-4 border border-indigo-500/30 animate-bounce">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+    </div>
+    <h3 class="text-xl font-bold text-white">Drop file to upload & index</h3>
+    <p class="text-sm text-slate-400 mt-1">Supports PDF, Audio (.mp3, .wav), Video (.mp4), and Images</p>
+  </div>
+
+  <!-- Minimal Header -->
+  <header class="border-b border-slate-800/60 bg-[#0f1117]/80 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs shadow-md shadow-indigo-600/30">
+          <i class="fa-solid fa-sparkles"></i>
         </div>
-        <div>
-          <span class="font-bold text-base tracking-tight text-white block leading-tight">Multimodal AI</span>
-          <span class="text-[11px] text-slate-400">Local Consumer AI Agent</span>
-        </div>
+        <span class="font-semibold text-sm tracking-tight text-white">Multimodal AI</span>
       </div>
 
-      <!-- Navigation Tabs (Chat vs Upload) -->
-      <div class="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
-        <button id="nav-chat" onclick="showTab('chat')" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white transition shadow-sm flex items-center gap-2">
-          <i class="fa-solid fa-message text-xs"></i>
-          <span>Ask & Search</span>
-        </button>
-        <button id="nav-upload" onclick="showTab('upload')" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-2">
-          <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
-          <span>Upload Files</span>
-          <span id="file-count-badge" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-indigo-300">...</span>
-        </button>
-      </div>
-
-      <!-- GPU Status Pill -->
-      <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span id="gpu-status">RTX 3050 Ti • Local</span>
-      </div>
-
+      <button onclick="resetChat()" class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
+        <i class="fa-solid fa-pen-to-square text-xs"></i>
+        <span>New Chat</span>
+      </button>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="max-w-4xl mx-auto px-4 py-6 flex-1 flex flex-col w-full">
+  <!-- Main Chat Flow -->
+  <main class="max-w-3xl mx-auto px-4 py-6 flex-1 flex flex-col w-full">
     
-    <!-- ================================================================= -->
-    <!-- TAB 1: CHAT & SEARCH VIEW                                          -->
-    <!-- ================================================================= -->
-    <div id="tab-chat" class="flex-1 flex flex-col w-full">
+    <!-- Messages Container -->
+    <div id="messages-container" class="flex-1 space-y-6 pb-28 chat-scroll">
       
-      <!-- Welcome Hero (Shown before first search) -->
-      <div id="chat-hero" class="text-center my-auto py-10 transition-all">
-        <div class="w-16 h-16 rounded-3xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto text-2xl shadow-xl mb-4">
-          <i class="fa-solid fa-wand-magic-sparkles"></i>
+      <!-- Clean Welcome Message -->
+      <div id="welcome-box" class="text-center my-auto py-12">
+        <div class="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center mx-auto text-2xl mb-4 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+          <i class="fa-solid fa-brain"></i>
         </div>
-        <h2 class="text-3xl font-bold text-white tracking-tight">Ask anything across your knowledge</h2>
-        <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
-          Ask questions, search for documents, listen to songs, or pinpoint video scenes.
+        <h2 class="text-2xl font-bold text-white tracking-tight">How can I help you today?</h2>
+        <p class="text-xs text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
+          Ask questions across your documents, listen to songs, search photos, or pinpoint video scenes.
         </p>
 
-        <!-- Suggested Quick Prompts -->
-        <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-xl mx-auto">
-          <button onclick="setQuery('Jhalak Dikhla Ja song and music audio')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-            <span>🎵 Play Jhalak Dikhla Ja</span>
-          </button>
-          <button onclick="setQuery('How do I maintain my car engine and prevent wear?')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-            <span>🚗 Car engine maintenance</span>
-          </button>
-          <button onclick="setQuery('red sports car speeding on the highway')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-            <span>🏎️ Red sports car in video</span>
-          </button>
-          <button onclick="setQuery('silicon microchip and printed circuit board')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-            <span>💻 Circuit board keyframe</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Results Display (Appears when user searches) -->
-      <div id="results-area" class="space-y-6 hidden mb-8">
-        
-        <!-- User Query -->
-        <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs text-slate-300 shrink-0 mt-0.5">
-            <i class="fa-solid fa-user"></i>
+        <!-- Quick Upload Card inside Welcome Screen -->
+        <div 
+          onclick="document.getElementById('file-input').click()" 
+          class="mt-6 mx-auto max-w-md p-4 rounded-2xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition flex items-center gap-3.5 group text-left"
+        >
+          <div class="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 flex items-center justify-center text-base shrink-0 transition">
+            <i class="fa-solid fa-arrow-up-from-bracket"></i>
           </div>
-          <div class="text-base font-semibold text-white pt-1" id="user-query-text"></div>
-        </div>
-
-        <!-- AI Generated Grounded Answer -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-          <div class="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2.5">
-            <i class="fa-solid fa-sparkles"></i> AI Answer
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-semibold text-slate-200 group-hover:text-white transition">
+              Upload any document, audio, image, or video
+            </div>
+            <div class="text-[11px] text-slate-500 truncate mt-0.5">
+              Click to browse, or drag & drop files anywhere
+            </div>
           </div>
-          <div id="ai-answer-text" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"></div>
+          <span class="text-xs text-slate-500 group-hover:text-indigo-400 transition font-medium">Browse</span>
         </div>
 
-        <!-- Retrieved Matching Media / Documents -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            <span>Matching Evidence</span>
-            <span id="timing-badge" class="font-mono text-slate-500 text-[11px]"></span>
-          </div>
-          <div id="evidence-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        <!-- Suggestion Chips -->
+        <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-md mx-auto">
+          <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+            🎵 Play Jhalak Dikhla Ja
+          </button>
+          <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+            🚗 Car engine maintenance
+          </button>
+          <button onclick="sendQuickPrompt('Show me the red sports car')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+            🏎️ Red sports car
+          </button>
         </div>
-
-      </div>
-
-      <!-- Bottom Chat Search Bar -->
-      <div class="mt-auto sticky bottom-4 z-40 pt-2">
-        <div class="bg-slate-900 border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition">
-          <form id="search-form" class="flex items-center gap-2">
-            
-            <!-- Quick Upload Shortcut Button -->
-            <button 
-              type="button" 
-              onclick="showTab('upload')" 
-              title="Upload new file" 
-              class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition shrink-0"
-            >
-              <i class="fa-solid fa-plus text-sm"></i>
-            </button>
-
-            <!-- Search Input -->
-            <input 
-              type="text" 
-              id="query-input" 
-              placeholder="Ask anything or search your files (e.g. 'Play Jhalak Dikhla Ja', 'car maintenance')..." 
-              class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2.5 px-1"
-              required
-              autocomplete="off"
-            >
-
-            <!-- Send Button -->
-            <button 
-              type="submit" 
-              id="send-btn" 
-              class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
-            >
-              <i class="fa-solid fa-arrow-up text-sm"></i>
-            </button>
-          </form>
-        </div>
-
-        <p class="text-[11px] text-slate-500 text-center mt-2">
-          Runs 100% locally on your NVIDIA RTX 3050 Ti GPU • Completely Private & Free
-        </p>
       </div>
 
     </div>
 
-    <!-- ================================================================= -->
-    <!-- TAB 2: UPLOAD & KNOWLEDGE LIBRARY VIEW                             -->
-    <!-- ================================================================= -->
-    <div id="tab-upload" class="space-y-6 hidden w-full">
-      
-      <!-- Big Obvious Upload Box -->
-      <div class="bg-slate-900 border-2 border-dashed border-indigo-500/40 hover:border-indigo-500 rounded-3xl p-8 sm:p-12 text-center transition bg-indigo-950/10">
-        <input type="file" id="library-file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
+    <!-- Fixed Bottom Input Container -->
+    <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f1117] via-[#0f1117] to-transparent pt-6 pb-4 z-30">
+      <div class="max-w-3xl mx-auto px-4">
         
-        <div class="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto text-3xl mb-4">
-          <i class="fa-solid fa-cloud-arrow-up"></i>
-        </div>
-
-        <h3 class="text-xl font-bold text-white">Upload Any File to Knowledge Base</h3>
-        <p class="text-sm text-slate-400 max-w-md mx-auto mt-2">
-          Drag and drop files here, or click the button below to browse.
-        </p>
-
-        <!-- Big Blue Select Button -->
-        <button 
-          type="button" 
-          onclick="document.getElementById('library-file-input').click()" 
-          class="mt-6 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-lg shadow-indigo-600/30 inline-flex items-center gap-2"
-        >
-          <i class="fa-solid fa-folder-open"></i>
-          <span>Choose Files to Upload</span>
-        </button>
-
-        <!-- Supported Formats Badges -->
-        <div class="flex flex-wrap justify-center gap-2 mt-6 text-xs text-slate-400">
-          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">📄 PDF / Text (.pdf, .txt, .md)</span>
-          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🖼️ Images (.png, .jpg)</span>
-          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🎵 Audio (.mp3, .wav)</span>
-          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🎬 Video (.mp4, .mkv)</span>
-        </div>
-
-        <!-- Uploading Spinner / Status -->
-        <div id="upload-progress-alert" class="hidden mt-6 p-3 rounded-xl bg-indigo-950/90 border border-indigo-800 text-sm text-indigo-300 max-w-md mx-auto"></div>
-      </div>
-
-      <!-- List of Currently Uploaded Files -->
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-layer-group text-indigo-400"></i>
-            <span>Your Indexed Files</span>
-            <span id="library-count-text" class="text-xs font-normal text-slate-400">(0 files)</span>
-          </h3>
-          <button onclick="loadUploadedFiles()" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition">
-            <i class="fa-solid fa-rotate"></i> Refresh List
+        <!-- Attached File Chip Preview -->
+        <div id="attached-file-badge" class="hidden mb-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-indigo-500/40 text-xs text-indigo-300 shadow-sm animate-fade-in">
+          <i class="fa-solid fa-paperclip text-xs"></i>
+          <span id="attached-file-name" class="font-medium truncate max-w-xs"></span>
+          <button onclick="clearAttachment()" class="text-slate-400 hover:text-white ml-1">
+            <i class="fa-solid fa-xmark text-xs"></i>
           </button>
         </div>
 
-        <!-- File Cards Grid -->
-        <div id="files-list-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          <div class="col-span-3 text-center py-8 text-slate-500 text-sm italic">Loading files...</div>
-        </div>
-      </div>
+        <!-- Chat Input Bar -->
+        <div class="bg-slate-900/90 backdrop-blur border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition flex items-center gap-2">
+          
+          <!-- Hidden File Upload -->
+          <input type="file" id="file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
+          <button 
+            type="button" 
+            onclick="document.getElementById('file-input').click()" 
+            title="Attach a file (PDF, MP3, MP4, JPG)"
+            class="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition shrink-0"
+          >
+            <i class="fa-solid fa-paperclip text-sm"></i>
+          </button>
 
+          <!-- Input Textbox -->
+          <input 
+            type="text" 
+            id="user-input" 
+            placeholder="Message Multimodal AI, or attach a file..." 
+            class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2 px-1"
+            autocomplete="off"
+          >
+
+          <!-- Send Button -->
+          <button 
+            type="button" 
+            id="send-btn" 
+            onclick="handleSendMessage()" 
+            class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
+          >
+            <i class="fa-solid fa-arrow-up text-sm"></i>
+          </button>
+        </div>
+
+      </div>
     </div>
 
   </main>
 
   <script>
-    // Tab Switching Logic
-    function showTab(tab) {
-      const navChat = document.getElementById('nav-chat');
-      const navUpload = document.getElementById('nav-upload');
-      const tabChat = document.getElementById('tab-chat');
-      const tabUpload = document.getElementById('tab-upload');
+    let attachedFile = null;
 
-      if (tab === 'chat') {
-        tabChat.classList.remove('hidden');
-        tabUpload.classList.add('hidden');
-        navChat.className = 'px-4 py-1.5 rounded-lg bg-indigo-600 text-white transition shadow-sm flex items-center gap-2';
-        navUpload.className = 'px-4 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-2';
-      } else {
-        tabChat.classList.add('hidden');
-        tabUpload.classList.remove('hidden');
-        navUpload.className = 'px-4 py-1.5 rounded-lg bg-indigo-600 text-white transition shadow-sm flex items-center gap-2';
-        navChat.className = 'px-4 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-2';
-        loadUploadedFiles();
+    // Reset Chat to clean initial state
+    function resetChat() {
+      const container = document.getElementById('messages-container');
+      container.innerHTML = `
+        <div id="welcome-box" class="text-center my-auto py-12">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center mx-auto text-2xl mb-4 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+            <i class="fa-solid fa-brain"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-white tracking-tight">How can I help you today?</h2>
+          <p class="text-xs text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
+            Ask questions across your documents, listen to songs, search photos, or pinpoint video scenes.
+          </p>
+          <div 
+            onclick="document.getElementById('file-input').click()" 
+            class="mt-6 mx-auto max-w-md p-4 rounded-2xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition flex items-center gap-3.5 group text-left"
+          >
+            <div class="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 flex items-center justify-center text-base shrink-0 transition">
+              <i class="fa-solid fa-arrow-up-from-bracket"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-semibold text-slate-200 group-hover:text-white transition">
+                Upload any document, audio, image, or video
+              </div>
+              <div class="text-[11px] text-slate-500 truncate mt-0.5">
+                Click to browse, or drag & drop files anywhere
+              </div>
+            </div>
+            <span class="text-xs text-slate-500 group-hover:text-indigo-400 transition font-medium">Browse</span>
+          </div>
+          <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-md mx-auto">
+            <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+              🎵 Play Jhalak Dikhla Ja
+            </button>
+            <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+              🚗 Car engine maintenance
+            </button>
+            <button onclick="sendQuickPrompt('Show me the red sports car')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+              🏎️ Red sports car
+            </button>
+          </div>
+        </div>
+      `;
+      clearAttachment();
+      document.getElementById('user-input').value = '';
+    }
+
+    // Quick Prompt
+    function sendQuickPrompt(text) {
+      document.getElementById('user-input').value = text;
+      handleSendMessage();
+    }
+
+    // File Input Changed
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        setAttachedFile(file);
       }
+    });
+
+    function setAttachedFile(file) {
+      attachedFile = file;
+      document.getElementById('attached-file-name').textContent = file.name;
+      document.getElementById('attached-file-badge').classList.remove('hidden');
     }
 
-    // Set Quick Query
-    function setQuery(text) {
-      document.getElementById('query-input').value = text;
-      showTab('chat');
-      document.getElementById('search-form').dispatchEvent(new Event('submit'));
+    function clearAttachment() {
+      attachedFile = null;
+      document.getElementById('file-input').value = '';
+      document.getElementById('attached-file-badge').classList.add('hidden');
     }
 
-    // Chat / Search Submit Form
-    document.getElementById('search-form').addEventListener('submit', async (e) => {
+    // Drag and Drop Handling on Window
+    let dragCounter = 0;
+    const dropOverlay = document.getElementById('drop-overlay');
+
+    window.addEventListener('dragenter', (e) => {
       e.preventDefault();
-      const input = document.getElementById('query-input');
-      const query = input.value.trim();
-      if (!query) return;
+      dragCounter++;
+      dropOverlay.classList.remove('opacity-0');
+      dropOverlay.classList.add('opacity-100');
+    });
 
-      const chatHero = document.getElementById('chat-hero');
-      const resultsArea = document.getElementById('results-area');
-      const userQueryText = document.getElementById('user-query-text');
-      const aiAnswerText = document.getElementById('ai-answer-text');
-      const sendBtn = document.getElementById('send-btn');
-      const timingBadge = document.getElementById('timing-badge');
+    window.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        dropOverlay.classList.remove('opacity-100');
+        dropOverlay.classList.add('opacity-0');
+      }
+    });
 
-      chatHero.classList.add('hidden');
-      resultsArea.classList.remove('hidden');
-      userQueryText.textContent = query;
-      aiAnswerText.innerHTML = '<span class="text-slate-400 italic flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Searching files & generating grounded answer...</span>';
-      sendBtn.disabled = true;
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
 
-      const startTime = performance.now();
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      dropOverlay.classList.remove('opacity-100');
+      dropOverlay.classList.add('opacity-0');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        setAttachedFile(e.dataTransfer.files[0]);
+      }
+    });
 
+    // Send Message
+    async function handleSendMessage() {
+      const input = document.getElementById('user-input');
+      const text = input.value.trim();
+      if (!text && !attachedFile) return;
+
+      const welcomeBox = document.getElementById('welcome-box');
+      if (welcomeBox) welcomeBox.remove();
+
+      const container = document.getElementById('messages-container');
+
+      // 1. If a file is attached, upload it first
+      if (attachedFile) {
+        const fileToUpload = attachedFile;
+        clearAttachment();
+
+        // Show uploading message in chat
+        const uploadMsg = document.createElement('div');
+        uploadMsg.className = 'flex justify-end';
+        uploadMsg.innerHTML = `
+          <div class="bg-indigo-600/20 border border-indigo-500/30 text-indigo-200 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>Uploading & indexing <b>${fileToUpload.name}</b>...</span>
+          </div>
+        `;
+        container.appendChild(uploadMsg);
+
+        const formData = new FormData();
+        formData.append('file', fileToUpload);
+
+        try {
+          const upRes = await fetch('/ingest/file', { method: 'POST', body: formData });
+          const upData = await upRes.json();
+          uploadMsg.innerHTML = `
+            <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2">
+              <i class="fa-solid fa-check"></i>
+              <span>Indexed <b>${fileToUpload.name}</b> into your knowledge base</span>
+            </div>
+          `;
+        } catch (err) {
+          uploadMsg.innerHTML = `
+            <div class="bg-red-500/10 border border-red-500/20 text-red-300 text-xs px-3.5 py-2 rounded-xl">
+              Failed to upload ${fileToUpload.name}
+            </div>
+          `;
+        }
+      }
+
+      if (!text) {
+        input.value = '';
+        return;
+      }
+
+      // 2. Render User Message
+      const userBubble = document.createElement('div');
+      userBubble.className = 'flex justify-end';
+      userBubble.innerHTML = `
+        <div class="bg-indigo-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed shadow-sm">
+          ${text}
+        </div>
+      `;
+      container.appendChild(userBubble);
+      input.value = '';
+
+      // 3. Render Assistant Placeholder Bubble
+      const botBubble = document.createElement('div');
+      botBubble.className = 'flex items-start gap-3';
+      const botId = 'bot-' + Date.now();
+      botBubble.innerHTML = `
+        <div class="w-7 h-7 rounded-lg bg-slate-800 text-indigo-400 flex items-center justify-center shrink-0 text-xs mt-1">
+          <i class="fa-solid fa-sparkles"></i>
+        </div>
+        <div class="flex-1 space-y-3" id="${botId}">
+          <div class="text-sm text-slate-400 italic flex items-center gap-2">
+            <i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Thinking...
+          </div>
+        </div>
+      `;
+      container.appendChild(botBubble);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+      // 4. Fetch RAG response
       try {
         const res = await fetch('/query/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: query, top_k: 4 })
+          body: JSON.stringify({ query: text, top_k: 4 })
         });
-
         const data = await res.json();
-        const elapsed = Math.round(performance.now() - startTime);
-        timingBadge.textContent = `${elapsed}ms`;
 
-        aiAnswerText.textContent = data.answer || 'No direct answer returned.';
-        renderEvidence(data.sources || []);
+        const botContent = document.getElementById(botId);
+        botContent.innerHTML = '';
+
+        // Text Answer
+        const answerText = document.createElement('div');
+        answerText.className = 'text-sm text-slate-200 leading-relaxed whitespace-pre-wrap';
+        answerText.textContent = data.answer || 'I could not find an answer based on your files.';
+        botContent.appendChild(answerText);
+
+        // Render any media evidence attached
+        const sources = data.sources || [];
+        const mediaSources = sources.filter(s => s.similarity >= 0.55);
+
+        if (mediaSources.length > 0) {
+          const mediaGrid = document.createElement('div');
+          mediaGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2';
+
+          mediaSources.forEach(item => {
+            const mod = (item.modality || 'text').toLowerCase();
+            const filename = item.content ? item.content.split('/').pop() : item.source;
+
+            const card = document.createElement('div');
+            card.className = 'bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between';
+
+            if (mod === 'audio') {
+              card.innerHTML = `
+                <div class="flex items-center justify-between text-xs mb-2">
+                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
+                  <span class="text-[10px] text-amber-400 font-mono">AUDIO</span>
+                </div>
+                <audio controls class="w-full h-8 rounded mt-1 bg-slate-950">
+                  <source src="/uploads/${filename}" type="audio/mpeg">
+                  <source src="/uploads/${filename}" type="audio/wav">
+                </audio>
+              `;
+            } else if (mod === 'image') {
+              card.innerHTML = `
+                <div class="flex items-center justify-between text-xs mb-1.5">
+                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
+                  <span class="text-[10px] text-emerald-400 font-mono">IMAGE</span>
+                </div>
+                <div class="rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
+                  <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover">
+                </div>
+              `;
+            } else if (mod === 'video') {
+              let frameFile = filename;
+              if (!frameFile.endsWith('.jpg') && !frameFile.endsWith('.png')) {
+                const match = (item.title + ' ' + item.content).match(/(\d\d):(\d\d)/);
+                if (match) {
+                  const sec = parseInt(match[1]) * 60 + parseInt(match[2]);
+                  frameFile = `tech_presentation_t${String(sec).padStart(4, '0')}.jpg`;
+                } else {
+                  frameFile = 'tech_presentation_t0000.jpg';
+                }
+              }
+              card.innerHTML = `
+                <div class="flex items-center justify-between text-xs mb-1.5">
+                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
+                  <span class="text-[10px] text-pink-400 font-mono">VIDEO</span>
+                </div>
+                <div class="rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black relative flex items-center justify-center">
+                  <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
+                  <span class="absolute bottom-1.5 right-1.5 bg-black/80 font-mono text-[9px] text-white px-1.5 py-0.5 rounded">
+                    Keyframe
+                  </span>
+                </div>
+              `;
+            } else {
+              card.innerHTML = `
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
+                  <span class="text-[10px] text-blue-400 font-mono">DOC</span>
+                </div>
+                <p class="text-[11px] text-slate-400 line-clamp-3 leading-relaxed mt-1 font-mono">${item.content || item.title}</p>
+              `;
+            }
+            mediaGrid.appendChild(card);
+          });
+
+          botContent.appendChild(mediaGrid);
+        }
       } catch (err) {
-        aiAnswerText.innerHTML = `<span class="text-red-400">Error: ${err.message}</span>`;
+        const botContent = document.getElementById(botId);
+        botContent.innerHTML = `<span class="text-red-400 text-sm">Error: ${err.message}</span>`;
       } finally {
-        sendBtn.disabled = false;
-        input.value = '';
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       }
-    });
-
-    // Render Evidence Cards
-    function renderEvidence(sources) {
-      const grid = document.getElementById('evidence-grid');
-      grid.innerHTML = '';
-
-      if (!sources || sources.length === 0) {
-        grid.innerHTML = '<p class="text-xs text-slate-500 italic col-span-2">No matching files found.</p>';
-        return;
-      }
-
-      sources.forEach(item => {
-        const mod = (item.modality || 'text').toLowerCase();
-        const card = document.createElement('div');
-        card.className = 'bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition shadow-lg';
-
-        let badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">DOCUMENT</span>';
-        if (mod === 'image') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IMAGE</span>';
-        if (mod === 'audio') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">AUDIO</span>';
-        if (mod === 'video') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20">VIDEO</span>';
-
-        const filename = item.content ? item.content.split('/').pop() : item.source;
-        let preview = '';
-
-        if (mod === 'image') {
-          preview = `
-            <div class="mt-3 rounded-xl overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
-              <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover">
-            </div>`;
-        } else if (mod === 'audio') {
-          preview = `
-            <div class="mt-3 bg-slate-950 p-2 rounded-xl border border-slate-800">
-              <audio controls class="w-full h-9 rounded">
-                <source src="/uploads/${filename}" type="audio/mpeg">
-                <source src="/uploads/${filename}" type="audio/wav">
-              </audio>
-            </div>`;
-        } else if (mod === 'video') {
-          let frameFile = filename;
-          if (!frameFile.endsWith('.jpg') && !frameFile.endsWith('.png')) {
-            const match = (item.title + ' ' + item.content).match(/(\d\d):(\d\d)/);
-            if (match) {
-              const sec = parseInt(match[1]) * 60 + parseInt(match[2]);
-              frameFile = `tech_presentation_t${String(sec).padStart(4, '0')}.jpg`;
-            } else {
-              frameFile = 'tech_presentation_t0000.jpg';
-            }
-          }
-          preview = `
-            <div class="mt-3 rounded-xl overflow-hidden border border-slate-800 aspect-video relative bg-black flex items-center justify-center">
-              <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
-              <span class="absolute bottom-2 right-2 bg-black/80 font-mono text-[10px] text-white px-2 py-0.5 rounded-md border border-white/20">
-                Keyframe
-              </span>
-            </div>`;
-        } else {
-          preview = `
-            <div class="mt-3 p-3 rounded-xl bg-slate-950 text-xs text-slate-300 font-mono max-h-24 overflow-y-auto leading-relaxed border border-slate-800/80">
-              ${item.content || item.title}
-            </div>`;
-        }
-
-        card.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between text-xs mb-2">
-              ${badge}
-              <span class="text-xs font-mono text-indigo-400 font-semibold">${Math.round((item.similarity || 0) * 100)}% Match</span>
-            </div>
-            <div class="text-sm font-bold text-white truncate">${item.title || filename}</div>
-            <div class="text-xs text-slate-500 truncate">${item.source}</div>
-          </div>
-          ${preview}
-        `;
-        grid.appendChild(card);
-      });
     }
 
-    // Load All Files Currently Uploaded
-    async function loadUploadedFiles() {
-      const grid = document.getElementById('files-list-grid');
-      const badge = document.getElementById('file-count-badge');
-      const countText = document.getElementById('library-count-text');
-
-      try {
-        const res = await fetch('/ingest/list');
-        const data = await res.json();
-        const files = data.files || [];
-
-        badge.textContent = files.length;
-        countText.textContent = `(${files.length} files)`;
-
-        if (files.length === 0) {
-          grid.innerHTML = '<div class="col-span-3 text-center py-8 text-slate-500 text-sm italic">No files in your library yet. Upload some files above!</div>';
-          return;
-        }
-
-        grid.innerHTML = '';
-        files.forEach(f => {
-          const item = document.createElement('div');
-          item.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition';
-
-          let icon = 'fa-file-lines text-blue-400';
-          if (f.modality === 'image') icon = 'fa-image text-emerald-400';
-          if (f.modality === 'audio') icon = 'fa-volume-high text-amber-400';
-          if (f.modality === 'video') icon = 'fa-film text-pink-400';
-
-          item.innerHTML = `
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-                <i class="fa-solid ${icon} text-sm"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="text-xs font-semibold text-white truncate" title="${f.name}">${f.name}</p>
-                <p class="text-[10px] text-slate-500">${f.size} • ${f.modality.toUpperCase()}</p>
-              </div>
-            </div>
-            <a href="${f.url}" target="_blank" class="w-7 h-7 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition shrink-0 ml-2" title="View file">
-              <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-            </a>
-          `;
-          grid.appendChild(item);
-        });
-      } catch (err) {
-        console.error('Failed to load files:', err);
-      }
-    }
-
-    // Library File Upload Handler
-    document.getElementById('library-file-input').addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      const progress = document.getElementById('upload-progress-alert');
-      progress.classList.remove('hidden');
-      progress.className = 'mt-6 p-3 rounded-xl bg-indigo-950/90 border border-indigo-800 text-sm text-indigo-300 max-w-md mx-auto';
-      progress.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Ingesting & vectorizing <b>${file.name}</b> on GPU...`;
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const res = await fetch('/ingest/file', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (res.ok) {
-          progress.className = 'mt-6 p-3 rounded-xl bg-emerald-950/90 border border-emerald-800 text-sm text-emerald-300 max-w-md mx-auto';
-          progress.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Successfully indexed <b>${data.filename}</b> into LanceDB (${data.chunks_created} vectors)!`;
-          loadUploadedFiles();
-          checkHealth();
-          setTimeout(() => progress.classList.add('hidden'), 5000);
-        } else {
-          progress.className = 'mt-6 p-3 rounded-xl bg-red-950/90 border border-red-800 text-sm text-red-300 max-w-md mx-auto';
-          progress.textContent = 'Upload failed: ' + (data.detail || 'Unknown error');
-        }
-      } catch (err) {
-        progress.className = 'mt-6 p-3 rounded-xl bg-red-950/90 border border-red-800 text-sm text-red-300 max-w-md mx-auto';
-        progress.textContent = 'Upload failed: ' + err.message;
+    // Allow Enter key to send
+    document.getElementById('user-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSendMessage();
       }
     });
-
-    // Check GPU Status
-    async function checkHealth() {
-      try {
-        const res = await fetch('/health/');
-        const data = await res.json();
-        if (data.device) {
-          document.getElementById('gpu-status').textContent = `${data.device.replace('NVIDIA GeForce ', '').replace(' Laptop GPU', '')} • ${data.total_documents_indexed} items in DB`;
-        }
-      } catch (e) {}
-    }
-
-    checkHealth();
-    loadUploadedFiles();
   </script>
 </body>
 </html>
