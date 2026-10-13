@@ -14,159 +14,261 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
-  <!-- Header -->
-  <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
+  <!-- Top Navbar -->
+  <header class="border-b border-slate-900 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+      
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
           <i class="fa-solid fa-sparkles text-sm"></i>
         </div>
-        <span class="font-bold text-sm tracking-tight text-white">Multimodal AI</span>
+        <div>
+          <span class="font-bold text-base tracking-tight text-white block leading-tight">Multimodal AI</span>
+          <span class="text-[11px] text-slate-400">Local Consumer AI Agent</span>
+        </div>
       </div>
 
-      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <!-- Navigation Tabs (Chat vs Upload) -->
+      <div class="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
+        <button id="nav-chat" onclick="showTab('chat')" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white transition shadow-sm flex items-center gap-2">
+          <i class="fa-solid fa-message text-xs"></i>
+          <span>Ask & Search</span>
+        </button>
+        <button id="nav-upload" onclick="showTab('upload')" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+          <span>Upload Files</span>
+          <span id="file-count-badge" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-indigo-300">...</span>
+        </button>
+      </div>
+
+      <!-- GPU Status Pill -->
+      <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span id="gpu-status">RTX 3050 Ti • Local</span>
-      </span>
+      </div>
+
     </div>
   </header>
 
-  <!-- Main Unified Container -->
-  <main class="max-w-3xl mx-auto px-4 py-8 flex-1 flex flex-col w-full">
+  <!-- Main Container -->
+  <main class="max-w-4xl mx-auto px-4 py-6 flex-1 flex flex-col w-full">
     
-    <!-- Hero (Welcome Screen) -->
-    <div id="hero" class="text-center my-auto py-12 transition-all">
-      <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center mx-auto text-white text-2xl shadow-xl shadow-indigo-500/20 mb-5">
-        <i class="fa-solid fa-brain"></i>
-      </div>
-      <h2 class="text-3xl font-bold text-white tracking-tight">Ask anything across your media</h2>
-      <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
-        Search documents, listen to audio, inspect images, and pinpoint video scenes—all in one place.
-      </p>
-
-      <!-- Quick Suggested Questions -->
-      <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-lg mx-auto">
-        <button onclick="submitQuery('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-          <span>🚗 Car maintenance advice</span>
-        </button>
-        <button onclick="submitQuery('red sports car speeding on the highway')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-          <span>🏎️ Red sports car</span>
-        </button>
-        <button onclick="submitQuery('emergency warning siren beep and alarm sound')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-          <span>🚨 Siren alarm sound</span>
-        </button>
-        <button onclick="submitQuery('silicon microchip and printed circuit board')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
-          <span>💻 Circuit board in video</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Unified Results Area -->
-    <div id="results-area" class="space-y-6 hidden mb-8">
+    <!-- ================================================================= -->
+    <!-- TAB 1: CHAT & SEARCH VIEW                                          -->
+    <!-- ================================================================= -->
+    <div id="tab-chat" class="flex-1 flex flex-col w-full">
       
-      <!-- User Query -->
-      <div class="flex items-start gap-3">
-        <div class="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs text-slate-400 shrink-0 mt-0.5">
-          <i class="fa-solid fa-user"></i>
+      <!-- Welcome Hero (Shown before first search) -->
+      <div id="chat-hero" class="text-center my-auto py-10 transition-all">
+        <div class="w-16 h-16 rounded-3xl bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto text-2xl shadow-xl mb-4">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
         </div>
-        <div class="text-base font-semibold text-white pt-0.5" id="user-query-text"></div>
+        <h2 class="text-3xl font-bold text-white tracking-tight">Ask anything across your knowledge</h2>
+        <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+          Ask questions, search for documents, listen to songs, or pinpoint video scenes.
+        </p>
+
+        <!-- Suggested Quick Prompts -->
+        <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-xl mx-auto">
+          <button onclick="setQuery('Jhalak Dikhla Ja song and music audio')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+            <span>🎵 Play Jhalak Dikhla Ja</span>
+          </button>
+          <button onclick="setQuery('How do I maintain my car engine and prevent wear?')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+            <span>🚗 Car engine maintenance</span>
+          </button>
+          <button onclick="setQuery('red sports car speeding on the highway')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+            <span>🏎️ Red sports car in video</span>
+          </button>
+          <button onclick="setQuery('silicon microchip and printed circuit board')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+            <span>💻 Circuit board keyframe</span>
+          </button>
+        </div>
       </div>
 
-      <!-- AI Answer (Grounded Synthesis) -->
-      <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800/80 shadow-lg">
-        <div class="flex items-center gap-2 text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
-          <i class="fa-solid fa-sparkles"></i> AI Answer
-        </div>
-        <div id="ai-answer-text" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-normal"></div>
-      </div>
-
-      <!-- Evidence & Matching Media Cards -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          <span>Matching Evidence</span>
-          <span id="speed-tag" class="font-mono text-slate-500 text-[11px]"></span>
-        </div>
-        <div id="evidence-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-      </div>
-
-    </div>
-
-    <!-- Bottom Unified Input Bar -->
-    <div class="mt-auto sticky bottom-4 z-40">
-      
-      <!-- Upload Alert -->
-      <div id="upload-status" class="hidden mb-2 px-3 py-2 rounded-xl bg-indigo-950/80 border border-indigo-800 text-xs text-indigo-300 text-center animate-fade-in shadow-lg"></div>
-
-      <!-- Search Box Container -->
-      <div class="bg-slate-900 border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition">
+      <!-- Results Display (Appears when user searches) -->
+      <div id="results-area" class="space-y-6 hidden mb-8">
         
-        <form id="search-form" class="flex items-center gap-2">
-          
-          <!-- Hidden File Upload -->
-          <input type="file" id="file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
-          <button 
-            type="button" 
-            onclick="document.getElementById('file-input').click()" 
-            title="Attach any file (Documents, Photos, Audio, Video)" 
-            class="w-10 h-10 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition shrink-0"
-          >
-            <i class="fa-solid fa-plus text-sm"></i>
-          </button>
+        <!-- User Query -->
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs text-slate-300 shrink-0 mt-0.5">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div class="text-base font-semibold text-white pt-1" id="user-query-text"></div>
+        </div>
 
-          <!-- Input Field -->
-          <input 
-            type="text" 
-            id="query-input" 
-            placeholder="Ask a question or search your files..." 
-            class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2"
-            required
-            autocomplete="off"
-          >
+        <!-- AI Generated Grounded Answer -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <div class="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2.5">
+            <i class="fa-solid fa-sparkles"></i> AI Answer
+          </div>
+          <div id="ai-answer-text" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"></div>
+        </div>
 
-          <!-- Send Button -->
-          <button 
-            type="submit" 
-            id="send-btn" 
-            class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
-          >
-            <i class="fa-solid fa-arrow-up text-sm"></i>
-          </button>
-        </form>
+        <!-- Retrieved Matching Media / Documents -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <span>Matching Evidence</span>
+            <span id="timing-badge" class="font-mono text-slate-500 text-[11px]"></span>
+          </div>
+          <div id="evidence-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        </div>
+
       </div>
 
-      <p class="text-[11px] text-slate-500 text-center mt-2">
-        Powered by Google EmbeddingGemma-2 & Qwen2.5 on your local RTX 3050 Ti GPU • 100% Free
-      </p>
+      <!-- Bottom Chat Search Bar -->
+      <div class="mt-auto sticky bottom-4 z-40 pt-2">
+        <div class="bg-slate-900 border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition">
+          <form id="search-form" class="flex items-center gap-2">
+            
+            <!-- Quick Upload Shortcut Button -->
+            <button 
+              type="button" 
+              onclick="showTab('upload')" 
+              title="Upload new file" 
+              class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition shrink-0"
+            >
+              <i class="fa-solid fa-plus text-sm"></i>
+            </button>
+
+            <!-- Search Input -->
+            <input 
+              type="text" 
+              id="query-input" 
+              placeholder="Ask anything or search your files (e.g. 'Play Jhalak Dikhla Ja', 'car maintenance')..." 
+              class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2.5 px-1"
+              required
+              autocomplete="off"
+            >
+
+            <!-- Send Button -->
+            <button 
+              type="submit" 
+              id="send-btn" 
+              class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
+            >
+              <i class="fa-solid fa-arrow-up text-sm"></i>
+            </button>
+          </form>
+        </div>
+
+        <p class="text-[11px] text-slate-500 text-center mt-2">
+          Runs 100% locally on your NVIDIA RTX 3050 Ti GPU • Completely Private & Free
+        </p>
+      </div>
+
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- TAB 2: UPLOAD & KNOWLEDGE LIBRARY VIEW                             -->
+    <!-- ================================================================= -->
+    <div id="tab-upload" class="space-y-6 hidden w-full">
+      
+      <!-- Big Obvious Upload Box -->
+      <div class="bg-slate-900 border-2 border-dashed border-indigo-500/40 hover:border-indigo-500 rounded-3xl p-8 sm:p-12 text-center transition bg-indigo-950/10">
+        <input type="file" id="library-file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
+        
+        <div class="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto text-3xl mb-4">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </div>
+
+        <h3 class="text-xl font-bold text-white">Upload Any File to Knowledge Base</h3>
+        <p class="text-sm text-slate-400 max-w-md mx-auto mt-2">
+          Drag and drop files here, or click the button below to browse.
+        </p>
+
+        <!-- Big Blue Select Button -->
+        <button 
+          type="button" 
+          onclick="document.getElementById('library-file-input').click()" 
+          class="mt-6 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-lg shadow-indigo-600/30 inline-flex items-center gap-2"
+        >
+          <i class="fa-solid fa-folder-open"></i>
+          <span>Choose Files to Upload</span>
+        </button>
+
+        <!-- Supported Formats Badges -->
+        <div class="flex flex-wrap justify-center gap-2 mt-6 text-xs text-slate-400">
+          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">📄 PDF / Text (.pdf, .txt, .md)</span>
+          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🖼️ Images (.png, .jpg)</span>
+          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🎵 Audio (.mp3, .wav)</span>
+          <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">🎬 Video (.mp4, .mkv)</span>
+        </div>
+
+        <!-- Uploading Spinner / Status -->
+        <div id="upload-progress-alert" class="hidden mt-6 p-3 rounded-xl bg-indigo-950/90 border border-indigo-800 text-sm text-indigo-300 max-w-md mx-auto"></div>
+      </div>
+
+      <!-- List of Currently Uploaded Files -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-indigo-400"></i>
+            <span>Your Indexed Files</span>
+            <span id="library-count-text" class="text-xs font-normal text-slate-400">(0 files)</span>
+          </h3>
+          <button onclick="loadUploadedFiles()" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition">
+            <i class="fa-solid fa-rotate"></i> Refresh List
+          </button>
+        </div>
+
+        <!-- File Cards Grid -->
+        <div id="files-list-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div class="col-span-3 text-center py-8 text-slate-500 text-sm italic">Loading files...</div>
+        </div>
+      </div>
+
     </div>
 
   </main>
 
   <script>
-    // Quick prompt submit
-    function submitQuery(text) {
+    // Tab Switching Logic
+    function showTab(tab) {
+      const navChat = document.getElementById('nav-chat');
+      const navUpload = document.getElementById('nav-upload');
+      const tabChat = document.getElementById('tab-chat');
+      const tabUpload = document.getElementById('tab-upload');
+
+      if (tab === 'chat') {
+        tabChat.classList.remove('hidden');
+        tabUpload.classList.add('hidden');
+        navChat.className = 'px-4 py-1.5 rounded-lg bg-indigo-600 text-white transition shadow-sm flex items-center gap-2';
+        navUpload.className = 'px-4 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-2';
+      } else {
+        tabChat.classList.add('hidden');
+        tabUpload.classList.remove('hidden');
+        navUpload.className = 'px-4 py-1.5 rounded-lg bg-indigo-600 text-white transition shadow-sm flex items-center gap-2';
+        navChat.className = 'px-4 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-2';
+        loadUploadedFiles();
+      }
+    }
+
+    // Set Quick Query
+    function setQuery(text) {
       document.getElementById('query-input').value = text;
+      showTab('chat');
       document.getElementById('search-form').dispatchEvent(new Event('submit'));
     }
 
-    // Unified Form Submit (Automatically does Search + RAG Answer)
+    // Chat / Search Submit Form
     document.getElementById('search-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('query-input');
       const query = input.value.trim();
       if (!query) return;
 
-      const hero = document.getElementById('hero');
+      const chatHero = document.getElementById('chat-hero');
       const resultsArea = document.getElementById('results-area');
       const userQueryText = document.getElementById('user-query-text');
       const aiAnswerText = document.getElementById('ai-answer-text');
       const sendBtn = document.getElementById('send-btn');
-      const speedTag = document.getElementById('speed-tag');
+      const timingBadge = document.getElementById('timing-badge');
 
-      // Update UI
-      hero.classList.add('hidden');
+      chatHero.classList.add('hidden');
       resultsArea.classList.remove('hidden');
       userQueryText.textContent = query;
-      aiAnswerText.innerHTML = '<span class="text-slate-400 italic flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Searching files and generating answer...</span>';
+      aiAnswerText.innerHTML = '<span class="text-slate-400 italic flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Searching files & generating grounded answer...</span>';
       sendBtn.disabled = true;
 
       const startTime = performance.now();
@@ -180,7 +282,7 @@
 
         const data = await res.json();
         const elapsed = Math.round(performance.now() - startTime);
-        speedTag.textContent = `${elapsed}ms`;
+        timingBadge.textContent = `${elapsed}ms`;
 
         aiAnswerText.textContent = data.answer || 'No direct answer returned.';
         renderEvidence(data.sources || []);
@@ -206,51 +308,62 @@
       sources.forEach(item => {
         const mod = (item.modality || 'text').toLowerCase();
         const card = document.createElement('div');
-        card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between hover:border-slate-700 transition';
+        card.className = 'bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition shadow-lg';
 
-        let badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">DOCUMENT</span>';
-        if (mod === 'image') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IMAGE</span>';
-        if (mod === 'audio') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">AUDIO</span>';
-        if (mod === 'video') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-pink-500/10 text-pink-400 border border-pink-500/20">VIDEO</span>';
+        let badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">DOCUMENT</span>';
+        if (mod === 'image') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IMAGE</span>';
+        if (mod === 'audio') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">AUDIO</span>';
+        if (mod === 'video') badge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20">VIDEO</span>';
 
         const filename = item.content ? item.content.split('/').pop() : item.source;
         let preview = '';
 
         if (mod === 'image') {
           preview = `
-            <div class="mt-2.5 rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
+            <div class="mt-3 rounded-xl overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
               <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover">
             </div>`;
         } else if (mod === 'audio') {
           preview = `
-            <div class="mt-2.5">
-              <audio controls class="w-full h-8 rounded bg-slate-950">
+            <div class="mt-3 bg-slate-950 p-2 rounded-xl border border-slate-800">
+              <audio controls class="w-full h-9 rounded">
+                <source src="/uploads/${filename}" type="audio/mpeg">
                 <source src="/uploads/${filename}" type="audio/wav">
               </audio>
             </div>`;
         } else if (mod === 'video') {
+          let frameFile = filename;
+          if (!frameFile.endsWith('.jpg') && !frameFile.endsWith('.png')) {
+            const match = (item.title + ' ' + item.content).match(/(\d\d):(\d\d)/);
+            if (match) {
+              const sec = parseInt(match[1]) * 60 + parseInt(match[2]);
+              frameFile = `tech_presentation_t${String(sec).padStart(4, '0')}.jpg`;
+            } else {
+              frameFile = 'tech_presentation_t0000.jpg';
+            }
+          }
           preview = `
-            <div class="mt-2.5 rounded-lg overflow-hidden border border-slate-800 aspect-video relative bg-black flex items-center justify-center">
-              <img src="/uploads/frames/${filename}" alt="${item.title}" class="w-full h-full object-cover">
-              <span class="absolute bottom-1.5 right-1.5 bg-black/80 font-mono text-[10px] text-white px-1.5 py-0.5 rounded border border-white/20">
+            <div class="mt-3 rounded-xl overflow-hidden border border-slate-800 aspect-video relative bg-black flex items-center justify-center">
+              <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
+              <span class="absolute bottom-2 right-2 bg-black/80 font-mono text-[10px] text-white px-2 py-0.5 rounded-md border border-white/20">
                 Keyframe
               </span>
             </div>`;
         } else {
           preview = `
-            <div class="mt-2.5 p-2 rounded bg-slate-950 text-[11px] text-slate-300 font-mono max-h-20 overflow-y-auto leading-relaxed border border-slate-800/80">
+            <div class="mt-3 p-3 rounded-xl bg-slate-950 text-xs text-slate-300 font-mono max-h-24 overflow-y-auto leading-relaxed border border-slate-800/80">
               ${item.content || item.title}
             </div>`;
         }
 
         card.innerHTML = `
           <div>
-            <div class="flex items-center justify-between text-xs mb-1">
+            <div class="flex items-center justify-between text-xs mb-2">
               ${badge}
-              <span class="text-[11px] font-mono text-slate-400">Match: ${Math.round((item.similarity || 0) * 100)}%</span>
+              <span class="text-xs font-mono text-indigo-400 font-semibold">${Math.round((item.similarity || 0) * 100)}% Match</span>
             </div>
-            <div class="text-xs font-semibold text-white truncate">${item.title || filename}</div>
-            <div class="text-[11px] text-slate-500 truncate">${item.source}</div>
+            <div class="text-sm font-bold text-white truncate">${item.title || filename}</div>
+            <div class="text-xs text-slate-500 truncate">${item.source}</div>
           </div>
           ${preview}
         `;
@@ -258,15 +371,65 @@
       });
     }
 
-    // File Upload Handler
-    document.getElementById('file-input').addEventListener('change', async (e) => {
+    // Load All Files Currently Uploaded
+    async function loadUploadedFiles() {
+      const grid = document.getElementById('files-list-grid');
+      const badge = document.getElementById('file-count-badge');
+      const countText = document.getElementById('library-count-text');
+
+      try {
+        const res = await fetch('/ingest/list');
+        const data = await res.json();
+        const files = data.files || [];
+
+        badge.textContent = files.length;
+        countText.textContent = `(${files.length} files)`;
+
+        if (files.length === 0) {
+          grid.innerHTML = '<div class="col-span-3 text-center py-8 text-slate-500 text-sm italic">No files in your library yet. Upload some files above!</div>';
+          return;
+        }
+
+        grid.innerHTML = '';
+        files.forEach(f => {
+          const item = document.createElement('div');
+          item.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between hover:border-slate-700 transition';
+
+          let icon = 'fa-file-lines text-blue-400';
+          if (f.modality === 'image') icon = 'fa-image text-emerald-400';
+          if (f.modality === 'audio') icon = 'fa-volume-high text-amber-400';
+          if (f.modality === 'video') icon = 'fa-film text-pink-400';
+
+          item.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+                <i class="fa-solid ${icon} text-sm"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-white truncate" title="${f.name}">${f.name}</p>
+                <p class="text-[10px] text-slate-500">${f.size} • ${f.modality.toUpperCase()}</p>
+              </div>
+            </div>
+            <a href="${f.url}" target="_blank" class="w-7 h-7 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition shrink-0 ml-2" title="View file">
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+            </a>
+          `;
+          grid.appendChild(item);
+        });
+      } catch (err) {
+        console.error('Failed to load files:', err);
+      }
+    }
+
+    // Library File Upload Handler
+    document.getElementById('library-file-input').addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      const status = document.getElementById('upload-status');
-      status.classList.remove('hidden');
-      status.className = 'mb-2 px-3 py-2 rounded-xl bg-indigo-950/80 border border-indigo-800 text-xs text-indigo-300 text-center animate-fade-in shadow-lg';
-      status.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Indexing <b>${file.name}</b>...`;
+      const progress = document.getElementById('upload-progress-alert');
+      progress.classList.remove('hidden');
+      progress.className = 'mt-6 p-3 rounded-xl bg-indigo-950/90 border border-indigo-800 text-sm text-indigo-300 max-w-md mx-auto';
+      progress.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Ingesting & vectorizing <b>${file.name}</b> on GPU...`;
 
       const formData = new FormData();
       formData.append('file', file);
@@ -275,31 +438,34 @@
         const res = await fetch('/ingest/file', { method: 'POST', body: formData });
         const data = await res.json();
         if (res.ok) {
-          status.className = 'mb-2 px-3 py-2 rounded-xl bg-emerald-950/80 border border-emerald-800 text-xs text-emerald-300 text-center animate-fade-in shadow-lg';
-          status.innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Successfully indexed <b>${data.filename}</b> into LanceDB!`;
-          setTimeout(() => status.classList.add('hidden'), 5000);
+          progress.className = 'mt-6 p-3 rounded-xl bg-emerald-950/90 border border-emerald-800 text-sm text-emerald-300 max-w-md mx-auto';
+          progress.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Successfully indexed <b>${data.filename}</b> into LanceDB (${data.chunks_created} vectors)!`;
+          loadUploadedFiles();
           checkHealth();
+          setTimeout(() => progress.classList.add('hidden'), 5000);
         } else {
-          status.className = 'mb-2 px-3 py-2 rounded-xl bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in shadow-lg';
-          status.textContent = 'Upload failed: ' + (data.detail || 'Unknown error');
+          progress.className = 'mt-6 p-3 rounded-xl bg-red-950/90 border border-red-800 text-sm text-red-300 max-w-md mx-auto';
+          progress.textContent = 'Upload failed: ' + (data.detail || 'Unknown error');
         }
       } catch (err) {
-        status.className = 'mb-2 px-3 py-2 rounded-xl bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in shadow-lg';
-        status.textContent = 'Upload failed: ' + err.message;
+        progress.className = 'mt-6 p-3 rounded-xl bg-red-950/90 border border-red-800 text-sm text-red-300 max-w-md mx-auto';
+        progress.textContent = 'Upload failed: ' + err.message;
       }
     });
 
-    // GPU Health Status
+    // Check GPU Status
     async function checkHealth() {
       try {
         const res = await fetch('/health/');
         const data = await res.json();
         if (data.device) {
-          document.getElementById('gpu-status').textContent = `${data.device.replace('NVIDIA GeForce ', '').replace(' Laptop GPU', '')} • ${data.total_documents_indexed} items`;
+          document.getElementById('gpu-status').textContent = `${data.device.replace('NVIDIA GeForce ', '').replace(' Laptop GPU', '')} • ${data.total_documents_indexed} items in DB`;
         }
       } catch (e) {}
     }
+
     checkHealth();
+    loadUploadedFiles();
   </script>
 </body>
 </html>

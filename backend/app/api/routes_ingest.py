@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pathlib import Path
 from ..config import settings
@@ -6,6 +7,38 @@ from ..processors import PROCESSOR_REGISTRY
 
 router = APIRouter(prefix="/ingest", tags=["Ingest"])
 engine = MultimodalRAGEngine()
+
+@router.get("/list")
+async def list_files():
+    """Lists all files stored in data/uploads/ with their size and format."""
+    try:
+        settings.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+        supported = set(PROCESSOR_REGISTRY.keys())
+        files = []
+        for f in settings.UPLOADS_DIR.iterdir():
+            if f.is_file() and f.suffix.lower() in supported and not f.name.endswith("_16k_mono.wav"):
+                mod = "document"
+                if f.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp"]:
+                    mod = "image"
+                elif f.suffix.lower() in [".wav", ".mp3", ".ogg", ".flac"]:
+                    mod = "audio"
+                elif f.suffix.lower() in [".mp4", ".mkv", ".mov"]:
+                    mod = "video"
+
+                size_kb = round(f.stat().st_size / 1024, 1)
+                size_str = f"{size_kb} KB" if size_kb < 1024 else f"{round(size_kb / 1024, 2)} MB"
+                files.append({
+                    "name": f.name,
+                    "extension": f.suffix.lower(),
+                    "modality": mod,
+                    "size": size_str,
+                    "url": f"/uploads/{f.name}"
+                })
+
+        files.sort(key=lambda x: x["name"])
+        return {"files": files, "total": len(files)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/file")
 async def ingest_file(file: UploadFile = File(...)):
