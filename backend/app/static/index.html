@@ -14,136 +14,120 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
-  <!-- Top Minimal Nav -->
+  <!-- Header -->
   <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20">
+        <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
           <i class="fa-solid fa-sparkles text-sm"></i>
         </div>
         <span class="font-bold text-sm tracking-tight text-white">Multimodal AI</span>
       </div>
 
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span id="gpu-status">RTX 3050 Ti • Local</span>
-        </span>
-      </div>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="gpu-status">RTX 3050 Ti • Local</span>
+      </span>
     </div>
   </header>
 
-  <!-- Main Centered Content -->
+  <!-- Main Unified Container -->
   <main class="max-w-3xl mx-auto px-4 py-8 flex-1 flex flex-col w-full">
     
-    <!-- Hero / Welcome Header -->
-    <div id="hero" class="text-center my-auto py-10 transition-all duration-300">
-      <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center mx-auto text-white text-2xl shadow-xl shadow-indigo-500/20 mb-4">
+    <!-- Hero (Welcome Screen) -->
+    <div id="hero" class="text-center my-auto py-12 transition-all">
+      <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center mx-auto text-white text-2xl shadow-xl shadow-indigo-500/20 mb-5">
         <i class="fa-solid fa-brain"></i>
       </div>
-      <h2 class="text-2xl font-bold text-white tracking-tight">What would you like to find?</h2>
+      <h2 class="text-3xl font-bold text-white tracking-tight">Ask anything across your media</h2>
       <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
-        Search and ask questions across your documents, images, audio clips, and video keyframes.
+        Search documents, listen to audio, inspect images, and pinpoint video scenes—all in one place.
       </p>
 
-      <!-- Quick Suggested Prompts -->
-      <div class="flex flex-wrap justify-center gap-2 mt-6">
-        <button onclick="setQuery('How do I maintain my car engine and prevent wear?')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-          🚗 Engine maintenance
+      <!-- Quick Suggested Questions -->
+      <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-lg mx-auto">
+        <button onclick="submitQuery('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+          <span>🚗 Car maintenance advice</span>
         </button>
-        <button onclick="setQuery('red sports car speeding on the highway')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-          🏎️ Red car in video & image
+        <button onclick="submitQuery('red sports car speeding on the highway')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+          <span>🏎️ Red sports car</span>
         </button>
-        <button onclick="setQuery('emergency warning siren beep and alarm sound')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-          🚨 Siren alarm sound
+        <button onclick="submitQuery('emergency warning siren beep and alarm sound')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+          <span>🚨 Siren alarm sound</span>
         </button>
-        <button onclick="setQuery('silicon microchip and printed circuit board')" class="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-          💻 Circuit board keyframe
+        <button onclick="submitQuery('silicon microchip and printed circuit board')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition flex items-center gap-2">
+          <span>💻 Circuit board in video</span>
         </button>
       </div>
     </div>
 
-    <!-- Results Section (Initially Hidden) -->
+    <!-- Unified Results Area -->
     <div id="results-area" class="space-y-6 hidden mb-8">
       
-      <!-- User Query Echo -->
+      <!-- User Query -->
       <div class="flex items-start gap-3">
         <div class="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs text-slate-400 shrink-0 mt-0.5">
           <i class="fa-solid fa-user"></i>
         </div>
-        <div class="text-sm font-medium text-slate-200 pt-1" id="query-display"></div>
+        <div class="text-base font-semibold text-white pt-0.5" id="user-query-text"></div>
       </div>
 
-      <!-- AI Answer Card -->
-      <div class="flex items-start gap-3 bg-slate-900/60 rounded-2xl p-5 border border-slate-800">
-        <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs text-white shrink-0 mt-0.5 shadow-md shadow-indigo-600/30">
-          <i class="fa-solid fa-sparkles"></i>
+      <!-- AI Answer (Grounded Synthesis) -->
+      <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800/80 shadow-lg">
+        <div class="flex items-center gap-2 text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
+          <i class="fa-solid fa-sparkles"></i> AI Answer
         </div>
-        <div class="flex-1">
-          <div class="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-1.5">AI Answer</div>
-          <div id="ai-answer" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"></div>
-        </div>
+        <div id="ai-answer-text" class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-normal"></div>
       </div>
 
-      <!-- Sources / Evidence Grid -->
-      <div id="sources-container" class="space-y-3">
-        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-          <span>Sources & Evidence</span>
-          <span id="timing-badge" class="font-mono text-slate-500 text-[11px]"></span>
+      <!-- Evidence & Matching Media Cards -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <span>Matching Evidence</span>
+          <span id="speed-tag" class="font-mono text-slate-500 text-[11px]"></span>
         </div>
-        <div id="sources-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        <div id="evidence-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
       </div>
 
     </div>
 
-    <!-- Fixed / Sticky Bottom Search Box (ChatGPT style) -->
+    <!-- Bottom Unified Input Bar -->
     <div class="mt-auto sticky bottom-4 z-40">
       
-      <!-- Upload notification badge -->
-      <div id="upload-status" class="hidden mb-2 px-3 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-800 text-xs text-indigo-300 text-center animate-fade-in"></div>
+      <!-- Upload Alert -->
+      <div id="upload-status" class="hidden mb-2 px-3 py-2 rounded-xl bg-indigo-950/80 border border-indigo-800 text-xs text-indigo-300 text-center animate-fade-in shadow-lg"></div>
 
-      <!-- Input Bar Container -->
+      <!-- Search Box Container -->
       <div class="bg-slate-900 border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition">
         
-        <!-- Filter Tabs (Clean Pills) -->
-        <div class="flex items-center gap-1 px-2 pb-2 border-b border-slate-800/80 text-xs overflow-x-auto">
-          <span class="text-[11px] text-slate-500 font-medium mr-1">Filter:</span>
-          <button data-modality="" class="mod-pill active px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium text-[11px] transition">All</button>
-          <button data-modality="text" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">📄 Text</button>
-          <button data-modality="image" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">🖼️ Images</button>
-          <button data-modality="audio" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">🎵 Audio</button>
-          <button data-modality="video" class="mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition">🎬 Video</button>
-        </div>
-
-        <!-- Text Input & Buttons -->
-        <form id="search-form" class="flex items-center gap-2 pt-2 px-2">
+        <form id="search-form" class="flex items-center gap-2">
           
           <!-- Hidden File Upload -->
           <input type="file" id="file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
           <button 
             type="button" 
             onclick="document.getElementById('file-input').click()" 
-            title="Upload any file (Text, Image, Audio, Video)" 
-            class="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition shrink-0"
+            title="Attach any file (Documents, Photos, Audio, Video)" 
+            class="w-10 h-10 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition shrink-0"
           >
-            <i class="fa-solid fa-paperclip text-sm"></i>
+            <i class="fa-solid fa-plus text-sm"></i>
           </button>
 
-          <!-- Input -->
+          <!-- Input Field -->
           <input 
             type="text" 
             id="query-input" 
-            placeholder="Ask a question or search across all media..." 
-            class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100"
+            placeholder="Ask a question or search your files..." 
+            class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2"
             required
             autocomplete="off"
           >
 
-          <!-- Submit Button -->
+          <!-- Send Button -->
           <button 
             type="submit" 
             id="send-btn" 
-            class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
+            class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white flex items-center justify-center transition shrink-0 shadow-md shadow-indigo-600/30"
           >
             <i class="fa-solid fa-arrow-up text-sm"></i>
           </button>
@@ -151,33 +135,20 @@
       </div>
 
       <p class="text-[11px] text-slate-500 text-center mt-2">
-        Runs 100% locally on your RTX 3050 Ti GPU • No data leaves your machine • $0 cloud cost
+        Powered by Google EmbeddingGemma-2 & Qwen2.5 on your local RTX 3050 Ti GPU • 100% Free
       </p>
     </div>
 
   </main>
 
   <script>
-    let activeModality = '';
-
-    // Quick Prompt
-    function setQuery(text) {
+    // Quick prompt submit
+    function submitQuery(text) {
       document.getElementById('query-input').value = text;
       document.getElementById('search-form').dispatchEvent(new Event('submit'));
     }
 
-    // Modality Filter Pills
-    document.querySelectorAll('.mod-pill').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.mod-pill').forEach(b => {
-          b.className = 'mod-pill px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium text-[11px] transition';
-        });
-        btn.className = 'mod-pill active px-2.5 py-1 rounded-md bg-indigo-600 text-white font-medium text-[11px] transition';
-        activeModality = btn.getAttribute('data-modality');
-      });
-    });
-
-    // Form Submit (Ask RAG)
+    // Unified Form Submit (Automatically does Search + RAG Answer)
     document.getElementById('search-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('query-input');
@@ -186,16 +157,16 @@
 
       const hero = document.getElementById('hero');
       const resultsArea = document.getElementById('results-area');
-      const queryDisplay = document.getElementById('query-display');
-      const aiAnswer = document.getElementById('ai-answer');
+      const userQueryText = document.getElementById('user-query-text');
+      const aiAnswerText = document.getElementById('ai-answer-text');
       const sendBtn = document.getElementById('send-btn');
-      const timingBadge = document.getElementById('timing-badge');
+      const speedTag = document.getElementById('speed-tag');
 
-      // UI Transition
+      // Update UI
       hero.classList.add('hidden');
       resultsArea.classList.remove('hidden');
-      queryDisplay.textContent = query;
-      aiAnswer.innerHTML = '<span class="text-slate-400 italic flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Thinking & retrieving multimodal evidence...</span>';
+      userQueryText.textContent = query;
+      aiAnswerText.innerHTML = '<span class="text-slate-400 italic flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Searching files and generating answer...</span>';
       sendBtn.disabled = true;
 
       const startTime = performance.now();
@@ -204,21 +175,17 @@
         const res = await fetch('/query/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: query,
-            top_k: 4,
-            modality: activeModality || null
-          })
+          body: JSON.stringify({ query: query, top_k: 4 })
         });
 
         const data = await res.json();
         const elapsed = Math.round(performance.now() - startTime);
-        timingBadge.textContent = `${elapsed}ms`;
+        speedTag.textContent = `${elapsed}ms`;
 
-        aiAnswer.textContent = data.answer || 'No direct answer returned.';
-        renderSources(data.sources || []);
+        aiAnswerText.textContent = data.answer || 'No direct answer returned.';
+        renderEvidence(data.sources || []);
       } catch (err) {
-        aiAnswer.innerHTML = `<span class="text-red-400">Error: ${err.message}</span>`;
+        aiAnswerText.innerHTML = `<span class="text-red-400">Error: ${err.message}</span>`;
       } finally {
         sendBtn.disabled = false;
         input.value = '';
@@ -227,12 +194,12 @@
     });
 
     // Render Evidence Cards
-    function renderSources(sources) {
-      const grid = document.getElementById('sources-grid');
+    function renderEvidence(sources) {
+      const grid = document.getElementById('evidence-grid');
       grid.innerHTML = '';
 
       if (!sources || sources.length === 0) {
-        grid.innerHTML = '<p class="text-xs text-slate-500 italic col-span-2">No direct sources found.</p>';
+        grid.innerHTML = '<p class="text-xs text-slate-500 italic col-span-2">No matching files found.</p>';
         return;
       }
 
@@ -241,7 +208,7 @@
         const card = document.createElement('div');
         card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between hover:border-slate-700 transition';
 
-        let badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">TEXT</span>';
+        let badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">DOCUMENT</span>';
         if (mod === 'image') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IMAGE</span>';
         if (mod === 'audio') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">AUDIO</span>';
         if (mod === 'video') badge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-pink-500/10 text-pink-400 border border-pink-500/20">VIDEO</span>';
@@ -251,19 +218,19 @@
 
         if (mod === 'image') {
           preview = `
-            <div class="mt-2 rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
+            <div class="mt-2.5 rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
               <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover">
             </div>`;
         } else if (mod === 'audio') {
           preview = `
-            <div class="mt-2">
-              <audio controls class="w-full h-7 rounded bg-slate-950">
+            <div class="mt-2.5">
+              <audio controls class="w-full h-8 rounded bg-slate-950">
                 <source src="/uploads/${filename}" type="audio/wav">
               </audio>
             </div>`;
         } else if (mod === 'video') {
           preview = `
-            <div class="mt-2 rounded-lg overflow-hidden border border-slate-800 aspect-video relative bg-black flex items-center justify-center">
+            <div class="mt-2.5 rounded-lg overflow-hidden border border-slate-800 aspect-video relative bg-black flex items-center justify-center">
               <img src="/uploads/frames/${filename}" alt="${item.title}" class="w-full h-full object-cover">
               <span class="absolute bottom-1.5 right-1.5 bg-black/80 font-mono text-[10px] text-white px-1.5 py-0.5 rounded border border-white/20">
                 Keyframe
@@ -271,7 +238,7 @@
             </div>`;
         } else {
           preview = `
-            <div class="mt-2 p-2 rounded bg-slate-950 text-[11px] text-slate-300 font-mono max-h-20 overflow-y-auto leading-relaxed border border-slate-800/80">
+            <div class="mt-2.5 p-2 rounded bg-slate-950 text-[11px] text-slate-300 font-mono max-h-20 overflow-y-auto leading-relaxed border border-slate-800/80">
               ${item.content || item.title}
             </div>`;
         }
@@ -298,7 +265,8 @@
 
       const status = document.getElementById('upload-status');
       status.classList.remove('hidden');
-      status.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Uploading and indexing <b>${file.name}</b>...`;
+      status.className = 'mb-2 px-3 py-2 rounded-xl bg-indigo-950/80 border border-indigo-800 text-xs text-indigo-300 text-center animate-fade-in shadow-lg';
+      status.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Indexing <b>${file.name}</b>...`;
 
       const formData = new FormData();
       formData.append('file', file);
@@ -307,20 +275,21 @@
         const res = await fetch('/ingest/file', { method: 'POST', body: formData });
         const data = await res.json();
         if (res.ok) {
-          status.className = 'mb-2 px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-800 text-xs text-emerald-300 text-center animate-fade-in';
-          status.innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Ingested <b>${data.filename}</b> into LanceDB (${data.chunks_created} vectors)!`;
+          status.className = 'mb-2 px-3 py-2 rounded-xl bg-emerald-950/80 border border-emerald-800 text-xs text-emerald-300 text-center animate-fade-in shadow-lg';
+          status.innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Successfully indexed <b>${data.filename}</b> into LanceDB!`;
           setTimeout(() => status.classList.add('hidden'), 5000);
+          checkHealth();
         } else {
-          status.className = 'mb-2 px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in';
+          status.className = 'mb-2 px-3 py-2 rounded-xl bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in shadow-lg';
           status.textContent = 'Upload failed: ' + (data.detail || 'Unknown error');
         }
       } catch (err) {
-        status.className = 'mb-2 px-3 py-1.5 rounded-lg bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in';
+        status.className = 'mb-2 px-3 py-2 rounded-xl bg-red-950/80 border border-red-800 text-xs text-red-300 text-center animate-fade-in shadow-lg';
         status.textContent = 'Upload failed: ' + err.message;
       }
     });
 
-    // Check GPU Status
+    // GPU Health Status
     async function checkHealth() {
       try {
         const res = await fetch('/health/');
