@@ -1,0 +1,1 @@
+title: Embedding Models Overview | text: Google EmbeddingGemma-2 maps text, images, and audio into a unified 256-dimensional vector space for semantic search and RAG.

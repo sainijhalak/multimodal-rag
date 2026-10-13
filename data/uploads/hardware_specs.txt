@@ -1,0 +1,1 @@
+title: NVIDIA GPU Architecture | text: Modern NVIDIA GPUs like the RTX 3050 feature Ampere architecture tensor cores with native support for bfloat16 mixed precision math.
