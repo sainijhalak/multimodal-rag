@@ -191,39 +191,53 @@
       </button>
     </div>
 
-    <!-- Quick Prompts List -->
-    <div class="flex-1 overflow-y-auto p-3 space-y-1">
-      <div class="text-[10px] font-bold text-rose-500/80 uppercase px-2.5 py-1 tracking-wider">Quick Inquiries</div>
+    <!-- Frequent & Recent Queries List -->
+    <div class="flex-1 overflow-y-auto p-3 space-y-3">
+      
+      <!-- User's Recent Inquiries (Dynamic) -->
+      <div id="recent-queries-section" class="hidden space-y-1">
+        <div class="flex items-center justify-between px-2.5 py-0.5">
+          <span class="text-[10px] font-bold text-rose-400/90 uppercase tracking-wider">Your Recents</span>
+          <button onclick="clearRecentQueries()" class="text-[9px] opacity-50 hover:opacity-100 hover:text-rose-400 transition">Clear</button>
+        </div>
+        <div id="recent-queries-list" class="space-y-1"></div>
+      </div>
 
-      <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40">
-        <i class="fa-solid fa-diagram-project text-xs text-rose-500 shrink-0"></i>
-        <span class="truncate">Flask & DB Flowchart</span>
-      </button>
+      <!-- Curated Most Frequent Inquiries -->
+      <div class="space-y-1">
+        <div class="text-[10px] font-bold text-rose-500/80 uppercase px-2.5 py-1 tracking-wider">Frequent Inquiries</div>
 
-      <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40">
-        <i class="fa-solid fa-music text-xs text-amber-500 shrink-0"></i>
-        <span class="truncate">Jhalak Dikhla Ja Lyrics</span>
-      </button>
+        <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Explain flowchart">
+          <i class="fa-solid fa-diagram-project text-xs text-rose-500 shrink-0"></i>
+          <span class="truncate">Explain Flowchart</span>
+        </button>
 
-      <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40">
-        <i class="fa-solid fa-play text-xs text-rose-400 shrink-0"></i>
-        <span class="truncate">Play Audio Track</span>
-      </button>
+        <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Song lyrics">
+          <i class="fa-solid fa-music text-xs text-amber-500 shrink-0"></i>
+          <span class="truncate">Jhalak Dikhla Ja Lyrics</span>
+        </button>
 
-      <button onclick="sendQuickPrompt('tell me about batman')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40">
-        <i class="fa-solid fa-mask text-xs text-indigo-400 shrink-0"></i>
-        <span class="truncate">Batman Knowledge</span>
-      </button>
+        <button onclick="sendQuickPrompt('tell me about batman')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Batman information">
+          <i class="fa-solid fa-mask text-xs text-indigo-400 shrink-0"></i>
+          <span class="truncate">Batman Knowledge</span>
+        </button>
 
-      <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40">
-        <i class="fa-solid fa-file-lines text-xs text-blue-400 shrink-0"></i>
-        <span class="truncate">Car Engine Manual</span>
-      </button>
+        <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Where to put documents">
+          <i class="fa-solid fa-folder-open text-xs text-blue-400 shrink-0"></i>
+          <span class="truncate">Where to Put Files</span>
+        </button>
 
-      <button onclick="sendQuickPrompt('Show me the red sports car in the video')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40">
-        <i class="fa-solid fa-video text-xs text-pink-400 shrink-0"></i>
-        <span class="truncate">Sports Car Keyframe</span>
-      </button>
+        <button onclick="sendQuickPrompt('How do I deploy this project?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="How to deploy">
+          <i class="fa-solid fa-rocket text-xs text-emerald-400 shrink-0"></i>
+          <span class="truncate">How to Deploy</span>
+        </button>
+
+        <button onclick="sendQuickPrompt('What documents and files are stored in the database?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Database contents">
+          <i class="fa-solid fa-database text-xs text-pink-400 shrink-0"></i>
+          <span class="truncate">Database Contents</span>
+        </button>
+      </div>
+
     </div>
 
     <!-- System Badge Footer -->
@@ -251,8 +265,9 @@
         <div class="flex items-center gap-2 text-xs">
           <span class="font-semibold tracking-tight">Conversational Studio</span>
           <span class="opacity-40">•</span>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-900/20 text-rose-400 border border-rose-800/40">
-            EmbeddingGemma-2 + Qwen2.5
+          <span class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Local & Private</span>
           </span>
         </div>
       </div>
@@ -317,7 +332,7 @@
             </span>
           </div>
 
-          <!-- Suggestion Chips -->
+          <!-- Suggestion Chips (User's Most Frequent Requests) -->
           <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-lg mx-auto">
             <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
               📊 Explain flowchart
@@ -328,8 +343,11 @@
             <button onclick="sendQuickPrompt('tell me about batman')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
               🦇 Batman files
             </button>
-            <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🚗 Car maintenance
+            <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
+              📁 Where to put files
+            </button>
+            <button onclick="sendQuickPrompt('How do I deploy this project?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
+              🚀 How to deploy
             </button>
           </div>
 
@@ -569,8 +587,11 @@
             <button onclick="sendQuickPrompt('tell me about batman')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
               🦇 Batman files
             </button>
-            <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🚗 Car maintenance
+            <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
+              📁 Where to put files
+            </button>
+            <button onclick="sendQuickPrompt('How do I deploy this project?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
+              🚀 How to deploy
             </button>
           </div>
         </div>
@@ -579,6 +600,50 @@
       lastUploadedFilename = null;
       document.getElementById('user-input').value = '';
     }
+
+    // Dynamic Recent & Frequent Queries Tracker
+    function recordRecentQuery(query) {
+      if (!query || query.trim().length < 3) return;
+      let recents = JSON.parse(localStorage.getItem('user_recent_queries') || '[]');
+      recents = recents.filter(q => q.toLowerCase() !== query.trim().toLowerCase());
+      recents.unshift(query.trim());
+      if (recents.length > 5) recents.pop();
+      localStorage.setItem('user_recent_queries', JSON.stringify(recents));
+      renderRecentQueries();
+    }
+
+    function renderRecentQueries() {
+      const section = document.getElementById('recent-queries-section');
+      const list = document.getElementById('recent-queries-list');
+      if (!section || !list) return;
+
+      const recents = JSON.parse(localStorage.getItem('user_recent_queries') || '[]');
+      if (recents.length === 0) {
+        section.classList.add('hidden');
+        list.innerHTML = '';
+        return;
+      }
+
+      section.classList.remove('hidden');
+      list.innerHTML = '';
+      recents.forEach(q => {
+        const btn = document.createElement('button');
+        btn.onclick = () => sendQuickPrompt(q);
+        btn.className = 'w-full text-left px-3 py-1.5 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2 group border border-transparent hover:border-rose-900/30';
+        btn.innerHTML = `
+          <i class="fa-solid fa-clock-rotate-left text-[11px] opacity-50 shrink-0 group-hover:text-rose-400"></i>
+          <span class="truncate opacity-80 group-hover:opacity-100">${q}</span>
+        `;
+        list.appendChild(btn);
+      });
+    }
+
+    function clearRecentQueries() {
+      localStorage.removeItem('user_recent_queries');
+      renderRecentQueries();
+    }
+
+    window.addEventListener('DOMContentLoaded', renderRecentQueries);
 
     function sendQuickPrompt(prompt) {
       document.getElementById('user-input').value = prompt;
@@ -692,6 +757,8 @@
         input.value = '';
         return;
       }
+
+      recordRecentQuery(text);
 
       // 2. Render User Message
       const userBubble = document.createElement('div');

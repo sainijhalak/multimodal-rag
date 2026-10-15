@@ -1,0 +1,26 @@
+# Multimodal RAG Studio Guide: Uploads, Architecture & Deployment
+
+## 1. Where to Put Files and Documents for Retrieval
+- All files you want the system to index and retrieve must be placed inside the `data/uploads/` folder.
+- On Windows File Explorer: Double-click the desktop shortcut "Open Multimodal Uploads.bat", or open:
+  `\\wsl$\Ubuntu\home\saini\projects\multimodal-rag\data\uploads`
+- Web Interface: You can also drag-and-drop any file anywhere on the web studio screen, or click the "Browse / Drop zone" or "+" button in the chat bar.
+- Supported file types:
+  - Text & Documents: .pdf, .txt, .md
+  - Images & Flowcharts: .png, .jpg, .jpeg, .webp (automatically extracted via local EasyOCR)
+  - Audio: .mp3, .wav, .flac, .ogg (playable in-browser audio player + lyrics companion)
+  - Video: .mp4, .mkv (scene keyframe extraction at 1 FPS)
+
+## 2. How to Deploy the Project
+- Local Deployment (Zero Cost, Offline GPU):
+  Run `python backend/run_server.py` to start the FastAPI server on `http://localhost:8000`. Double-click "Open Multimodal AI.bat" on your Windows desktop.
+- Production / Cloud Deployment:
+  - Docker: Build a container image (`docker build -t multimodal-rag .`) and deploy to AWS EC2, GCP Compute Engine, or RunPod GPU instances with NVIDIA Container Toolkit.
+  - Vercel Frontend: The `frontend/` folder contains a Next.js application that can be deployed to Vercel by linking your GitHub repository (`https://github.com/sainijhalak/multimodal-rag`), pointing API requests to your hosted FastAPI backend.
+  - GitHub Repository: All source code, commit history, and tests are synced at `https://github.com/sainijhalak/multimodal-rag`.
+
+## 3. How the Multimodal RAG Engine Works
+- Vector Store: LanceDB (high-performance embedded vector database stored in `data/lancedb/`).
+- Embeddings: Google EmbeddingGemma-2 with Matryoshka 256-dimensional embeddings and task-specific SearchQuery / Document prefixes.
+- Ingestion & OCR: Flowcharts and diagrams are parsed with EasyOCR to extract sequential logic steps (e.g. Start -> User -> API -> Auth -> PostgreSQL -> End).
+- Conversational Answer: Local Qwen2.5-Instruct generates grounded answers with real-time token streaming and evidence cards.
