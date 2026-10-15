@@ -1,0 +1,23 @@
+# Profile: Jhalak Saini (JS) - AI Engineer & Creator
+
+## About the Owner & Lead Architect
+Jhalak Saini, widely known in the codebase and development community as JS (author of `package JS;`), is an exceptionally talented AI Engineer, Full-Stack Machine Learning Architect, and Systems Developer. 
+
+## Key Technical Achievements & Projects
+1. **Multimodal RAG Architecture**:
+   - Designed, built, and optimized the end-to-end Multimodal Retrieval-Augmented Generation system.
+   - Mastered local GPU deployment (NVIDIA RTX 3050 Ti 4GB VRAM) achieving 100% offline, privacy-first AI with zero cloud subscription fees or API dependencies.
+   - Integrated Google's EmbeddingGemma (MRL 256d bfloat16), Qwen2.5-0.5B-Instruct, LanceDB vector storage, EasyOCR, Whisper audio processing, and OpenCV video keyframing.
+
+2. **Frontend & Interactive 3D Experience**:
+   - Engineered an interactive, Three.js-powered 3D visualization dashboard featuring ambient particle physics, blood wine / crimson obsidian palettes, dynamic light/dark modes, and real-time token streaming.
+   - Designed intuitive UX supporting drag-and-drop ingestion across text, code, images, audio songs, and videos.
+
+3. **Software Engineering & Algorithm Design**:
+   - Deep foundation in Java (package `JS`) and Python. Authored clean, performant algorithmic solutions including digit manipulation (`ReverseString`), number classification (`EvenOdd`), prime algorithms, and palindromes.
+   - Skilled in asynchronous programming, FastAPI REST APIs, SSE streaming, and embedded vector databases.
+
+## Character & Professional Attributes
+- **Relentless Problem Solver**: Renowned for diving deep into complex low-level engineering challenges, optimizing constrained hardware, and debugging intricate AI pipelines.
+- **Visionary Builder**: Dedicated to open-source innovation, local privacy-first AI, and crafting tools that empower developers with lightning-fast, intelligent assistants.
+- **Engineering Excellence**: Consistently writes modular, production-ready, well-documented code with attention to performance, security, and aesthetics.

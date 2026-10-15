@@ -89,13 +89,14 @@ class MultimodalRAGEngine:
                 seen.add(key)
                 combined_items.append(item)
 
-        # Strict relevance filtering: eliminate unrelated filler results
+        # Relevance filtering: retain top-tier matching results while eliminating distant noise
         filtered_items = []
         if combined_items:
             top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
+            threshold = max(0.55, top_sim - 0.10)
             for item in combined_items:
                 sim = item.get("similarity", 0)
-                if sim >= 0.70 and sim >= (top_sim - 0.12):
+                if sim >= threshold:
                     filtered_items.append(item)
 
         retrieved_items = filtered_items[:top_k] if filtered_items else combined_items[:1]
@@ -120,12 +121,16 @@ class MultimodalRAGEngine:
         context_str = "\n\n".join(context_parts)
 
         system_prompt = (
-            "You are a helpful, intelligent multimodal AI assistant. "
-            "Answer the user's question clearly and accurately based on the retrieved context below. "
-            "When explaining flowcharts, architecture diagrams, or processes: "
-            "break down each step, decision diamond, valid/invalid path, database interaction, and error/success code in sequence. "
-            "When answering about songs, provide lyrics and details from the context. "
-            "Always cite the source files."
+            "You are a friendly, intelligent multimodal AI assistant and expert engineer. "
+            "Answer the user's question clearly, warmly, and accurately using the retrieved context below.\n"
+            "- CODE & ALGORITHMS: When the user asks for code or the context contains source code/algorithms "
+            "(e.g., reversing a number, even/odd, Java, Python), ALWAYS provide the complete, clean, well-formatted code snippet "
+            "with markdown syntax highlighting (```java) and explain step-by-step how the logic works. Never refuse to share or write code.\n"
+            "- OWNER & CREATOR: When asked about the owner, creator, or JS (Jhalak Saini), warmly highlight his achievements, "
+            "his skills as an AI engineer, his work building this offline multimodal RAG system, Java algorithms, and 3D dashboard.\n"
+            "- DIAGRAMS & FLOWCHARTS: When explaining diagrams or workflows, walk through every step, condition, and outcome clearly.\n"
+            "- SONGS: When asked about songs or lyrics, provide the lyrics and musical details.\n"
+            "- SOURCES: Cite the source file names naturally."
         )
 
         user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
@@ -161,13 +166,14 @@ class MultimodalRAGEngine:
                 seen.add(key)
                 combined_items.append(item)
 
-        # Strict relevance filtering
+        # Relevance filtering: retain top-tier matching results while eliminating distant noise
         filtered_items = []
         if combined_items:
             top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
+            threshold = max(0.55, top_sim - 0.10)
             for item in combined_items:
                 sim = item.get("similarity", 0)
-                if sim >= 0.70 and sim >= (top_sim - 0.12):
+                if sim >= threshold:
                     filtered_items.append(item)
 
         retrieved_items = filtered_items[:top_k] if filtered_items else combined_items[:1]
@@ -192,11 +198,16 @@ class MultimodalRAGEngine:
         context_str = "\n\n".join(context_parts)
 
         system_prompt = (
-            "You are a helpful, intelligent multimodal AI assistant. "
-            "Answer the user's question clearly, concisely, and accurately based on the retrieved context below. "
-            "When explaining flowcharts or processes, break down the sequential steps. "
-            "When answering about songs, provide lyrics from the context. "
-            "Always cite the source files."
+            "You are a friendly, intelligent multimodal AI assistant and expert engineer. "
+            "Answer the user's question clearly, warmly, and accurately using the retrieved context below.\n"
+            "- CODE & ALGORITHMS: When the user asks for code or the context contains source code/algorithms "
+            "(e.g., reversing a number, even/odd, Java, Python), ALWAYS provide the complete, clean, well-formatted code snippet "
+            "with markdown syntax highlighting (```java) and explain step-by-step how the logic works. Never refuse to share or write code.\n"
+            "- OWNER & CREATOR: When asked about the owner, creator, or JS (Jhalak Saini), warmly highlight his achievements, "
+            "his skills as an AI engineer, his work building this offline multimodal RAG system, Java algorithms, and 3D dashboard.\n"
+            "- DIAGRAMS & FLOWCHARTS: When explaining diagrams or workflows, walk through every step, condition, and outcome clearly.\n"
+            "- SONGS: When asked about songs or lyrics, provide the lyrics and musical details.\n"
+            "- SOURCES: Cite the source file names naturally."
         )
 
         user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
