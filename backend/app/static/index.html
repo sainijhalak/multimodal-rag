@@ -1,136 +1,284 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multimodal AI</title>
+  <title>Multimodal AI • ChatGPT & Claude Studio</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js for Interactive 3D Background -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Marked for Markdown Parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            surface: {
+              base: '#0c0d12',
+              card: '#13151f',
+              hover: '#1a1c2a',
+              border: '#232738'
+            }
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-    .chat-scroll::-webkit-scrollbar { width: 6px; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    
+    #three-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.65;
+    }
+    
+    .chat-scroll::-webkit-scrollbar { width: 5px; }
     .chat-scroll::-webkit-scrollbar-track { background: transparent; }
-    .chat-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 9999px; }
-    .drag-active { border-color: #6366f1 !important; background-color: rgba(99, 102, 241, 0.08) !important; }
+    .chat-scroll::-webkit-scrollbar-thumb { background: #232738; border-radius: 9999px; }
+    .chat-scroll::-webkit-scrollbar-thumb:hover { background: #374151; }
+    
+    .prose-custom p { margin-bottom: 0.75rem; line-height: 1.65; }
+    .prose-custom p:last-child { margin-bottom: 0; }
+    .prose-custom ul { list-style-type: disc; margin-left: 1.25rem; margin-bottom: 0.75rem; }
+    .prose-custom ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.75rem; }
+    .prose-custom strong { color: #f8fafc; font-weight: 600; }
+    .prose-custom pre { background: #08090d; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid #232738; overflow-x: auto; margin-bottom: 0.75rem; }
   </style>
 </head>
-<body class="bg-[#0f1117] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white relative">
+<body class="bg-[#0c0d12] text-slate-100 min-h-screen flex antialiased selection:bg-indigo-500 selection:text-white overflow-hidden">
+
+  <!-- Interactive ThreeJS Background Visualizer -->
+  <canvas id="three-canvas"></canvas>
 
   <!-- Fullscreen Drag & Drop Overlay -->
-  <div id="drop-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center border-2 border-dashed border-indigo-500 m-4 rounded-3xl pointer-events-none opacity-0 transition-opacity duration-200">
-    <div class="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-3xl mb-4 border border-indigo-500/30 animate-bounce">
+  <div id="drop-overlay" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex flex-col items-center justify-center border-2 border-dashed border-indigo-500 m-6 rounded-3xl pointer-events-none opacity-0 transition-opacity duration-200">
+    <div class="w-20 h-20 rounded-3xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/40 flex items-center justify-center text-4xl mb-4 animate-bounce shadow-2xl shadow-indigo-500/30">
       <i class="fa-solid fa-cloud-arrow-up"></i>
     </div>
-    <h3 class="text-xl font-bold text-white">Drop file to upload & index</h3>
-    <p class="text-sm text-slate-400 mt-1">Supports PDF, Audio (.mp3, .wav), Video (.mp4), and Images</p>
+    <h3 class="text-2xl font-bold text-white tracking-tight">Drop your file here</h3>
+    <p class="text-sm text-slate-400 mt-2">PDF, Audio (.mp3, .wav), Video (.mp4), Images, or Text will be indexed instantly</p>
   </div>
 
-  <!-- Minimal Header -->
-  <header class="border-b border-slate-800/60 bg-[#0f1117]/80 backdrop-blur sticky top-0 z-40">
-    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs shadow-md shadow-indigo-600/30">
-          <i class="fa-solid fa-sparkles"></i>
+  <!-- Left Sidebar (ChatGPT / Claude Style) -->
+  <aside id="sidebar" class="w-72 bg-[#090a0f]/90 border-r border-[#1a1c2a] flex flex-col z-30 transition-all duration-300 relative backdrop-blur-md">
+    
+    <!-- Top Branding & New Chat -->
+    <div class="p-4 border-b border-[#1a1c2a] flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-sm shadow-md shadow-indigo-600/30">
+            <i class="fa-solid fa-sparkles"></i>
+          </div>
+          <div>
+            <span class="font-bold text-sm tracking-tight text-white block leading-tight">Multimodal AI</span>
+            <span class="text-[10px] text-indigo-400 font-mono">RTX 3050 Ti • Local</span>
+          </div>
         </div>
-        <span class="font-semibold text-sm tracking-tight text-white">Multimodal AI</span>
+        <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/60 transition md:hidden">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
       </div>
 
-      <button onclick="resetChat()" class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
-        <i class="fa-solid fa-pen-to-square text-xs"></i>
-        <span>New Chat</span>
+      <button onclick="resetChat()" class="w-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] hover:border-indigo-500/40 text-xs font-semibold text-slate-200 py-2.5 px-3 rounded-xl transition flex items-center justify-between shadow-sm group">
+        <span class="flex items-center gap-2">
+          <i class="fa-solid fa-plus text-indigo-400 group-hover:rotate-90 transition duration-200"></i>
+          <span>New Chat</span>
+        </span>
+        <kbd class="text-[10px] text-slate-500 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">Ctrl+K</kbd>
       </button>
     </div>
-  </header>
 
-  <!-- Main Chat Flow -->
-  <main class="max-w-3xl mx-auto px-4 py-6 flex-1 flex flex-col w-full">
-    
-    <!-- Messages Container -->
-    <div id="messages-container" class="flex-1 space-y-6 pb-28 chat-scroll">
+    <!-- Quick Prompts / Chat Navigation -->
+    <div class="flex-1 overflow-y-auto chat-scroll p-3 space-y-1">
+      <div class="text-[11px] font-semibold text-slate-500 uppercase px-3 py-1.5 tracking-wider">Explore Multimodal</div>
       
-      <!-- Clean Welcome Message -->
-      <div id="welcome-box" class="text-center my-auto py-12">
-        <div class="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center mx-auto text-2xl mb-4 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
-          <i class="fa-solid fa-brain"></i>
+      <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-[#13151f] border border-transparent hover:border-[#232738] transition flex items-center gap-2.5 group">
+        <i class="fa-solid fa-music text-amber-400 text-xs shrink-0"></i>
+        <span class="truncate">Lyrics: Jhalak Dikhla Ja</span>
+      </button>
+
+      <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-[#13151f] border border-transparent hover:border-[#232738] transition flex items-center gap-2.5 group">
+        <i class="fa-solid fa-play text-indigo-400 text-xs shrink-0"></i>
+        <span class="truncate">Play Jhalak Dikhla Ja</span>
+      </button>
+
+      <button onclick="sendQuickPrompt('Show me the red sports car in the video')" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-[#13151f] border border-transparent hover:border-[#232738] transition flex items-center gap-2.5 group">
+        <i class="fa-solid fa-video text-pink-400 text-xs shrink-0"></i>
+        <span class="truncate">Red sports car scene</span>
+      </button>
+
+      <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-[#13151f] border border-transparent hover:border-[#232738] transition flex items-center gap-2.5 group">
+        <i class="fa-solid fa-file-lines text-blue-400 text-xs shrink-0"></i>
+        <span class="truncate">Car maintenance guide</span>
+      </button>
+
+      <button onclick="sendQuickPrompt('Find circuit board electronics image')" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-[#13151f] border border-transparent hover:border-[#232738] transition flex items-center gap-2.5 group">
+        <i class="fa-solid fa-image text-emerald-400 text-xs shrink-0"></i>
+        <span class="truncate">Circuit board image</span>
+      </button>
+    </div>
+
+    <!-- Bottom Knowledge Base Status & Storage Info -->
+    <div class="p-3 border-t border-[#1a1c2a] bg-[#090a0f]">
+      <div class="bg-[#13151f] border border-[#232738] rounded-xl p-3 text-xs">
+        <div class="flex items-center justify-between text-slate-400 mb-1.5">
+          <span class="font-medium text-slate-200 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Local Knowledge</span>
+          </span>
+          <span id="indexed-count" class="font-mono text-indigo-400 font-semibold text-[11px]">Active</span>
         </div>
-        <h2 class="text-2xl font-bold text-white tracking-tight">How can I help you today?</h2>
-        <p class="text-xs text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
-          Ask questions across your documents, listen to songs, search photos, or pinpoint video scenes.
+        <p class="text-[11px] text-slate-400 leading-snug">
+          Files stored locally in <code class="text-slate-300 font-mono text-[10px]">data/uploads/</code>
         </p>
+      </div>
+    </div>
 
-        <!-- Quick Upload Card inside Welcome Screen -->
-        <div 
-          onclick="document.getElementById('file-input').click()" 
-          class="mt-6 mx-auto max-w-md p-4 rounded-2xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition flex items-center gap-3.5 group text-left"
-        >
-          <div class="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 flex items-center justify-center text-base shrink-0 transition">
-            <i class="fa-solid fa-arrow-up-from-bracket"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs font-semibold text-slate-200 group-hover:text-white transition">
-              Upload any document, audio, image, or video
-            </div>
-            <div class="text-[11px] text-slate-500 truncate mt-0.5">
-              Click to browse, or drag & drop files anywhere
-            </div>
-          </div>
-          <span class="text-xs text-slate-500 group-hover:text-indigo-400 transition font-medium">Browse</span>
-        </div>
+  </aside>
 
-        <!-- Suggestion Chips -->
-        <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-md mx-auto">
-          <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-            🎵 Play Jhalak Dikhla Ja
-          </button>
-          <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-            🚗 Car engine maintenance
-          </button>
-          <button onclick="sendQuickPrompt('Show me the red sports car')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-            🏎️ Red sports car
-          </button>
+  <!-- Main View Container -->
+  <div class="flex-1 flex flex-col h-screen relative z-10 overflow-hidden">
+    
+    <!-- Top Header -->
+    <header class="h-14 border-b border-[#1a1c2a] bg-[#0c0d12]/80 backdrop-blur-md px-4 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800/60 transition">
+          <i class="fa-solid fa-bars text-sm"></i>
+        </button>
+
+        <div class="flex items-center gap-2 text-xs">
+          <span class="font-semibold text-slate-200">Multimodal Assistant</span>
+          <span class="text-slate-600">•</span>
+          <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[11px] font-medium hidden sm:inline-block">
+            Gemma-2 + Qwen2.5
+          </span>
         </div>
       </div>
 
-    </div>
+      <div class="flex items-center gap-2">
+        <button onclick="document.getElementById('file-input').click()" class="text-xs bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] hover:border-indigo-500/40 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+          <i class="fa-solid fa-paperclip text-xs text-indigo-400"></i>
+          <span class="hidden sm:inline">Attach File</span>
+        </button>
 
-    <!-- Fixed Bottom Input Container -->
-    <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f1117] via-[#0f1117] to-transparent pt-6 pb-4 z-30">
-      <div class="max-w-3xl mx-auto px-4">
+        <button onclick="resetChat()" class="text-xs text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800/60 transition" title="Start New Chat">
+          <i class="fa-solid fa-arrow-rotate-right text-xs"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Chat Messages Stream -->
+    <main id="chat-stream" class="flex-1 overflow-y-auto chat-scroll px-4 py-6">
+      <div class="max-w-3xl mx-auto space-y-6 pb-24" id="messages-container">
         
-        <!-- Attached File Chip Preview -->
-        <div id="attached-file-badge" class="hidden mb-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-indigo-500/40 text-xs text-indigo-300 shadow-sm animate-fade-in">
+        <!-- Welcome Screen (Shown initially) -->
+        <div id="welcome-screen" class="text-center py-12 my-auto">
+          <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600/20 via-violet-600/20 to-purple-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto text-3xl mb-5 shadow-2xl shadow-indigo-600/20">
+            <i class="fa-solid fa-brain"></i>
+          </div>
+
+          <h2 class="text-3xl font-bold text-white tracking-tight">What would you like to explore?</h2>
+          <p class="text-xs text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
+            Search across documents, ask for song lyrics, play audio tracks, view video scenes, or query photos.
+          </p>
+
+          <!-- Interactive Upload Drop Zone inside Welcome -->
+          <div 
+            onclick="document.getElementById('file-input').click()"
+            class="mt-8 mx-auto max-w-lg p-5 rounded-2xl border border-dashed border-[#232738] hover:border-indigo-500/60 bg-[#13151f]/60 hover:bg-[#13151f] cursor-pointer transition flex items-center gap-4 group text-left shadow-lg"
+          >
+            <div class="w-12 h-12 rounded-2xl bg-indigo-600/10 group-hover:bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-xl shrink-0 transition border border-indigo-500/20">
+              <i class="fa-solid fa-arrow-up-from-bracket"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-semibold text-slate-200 group-hover:text-white transition">
+                Upload documents, songs, images, or videos
+              </div>
+              <div class="text-[11px] text-slate-500 truncate mt-0.5">
+                Drag & drop anywhere, or click to choose files (.pdf, .mp3, .wav, .mp4, .png)
+              </div>
+            </div>
+            <span class="text-xs text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 font-medium group-hover:bg-indigo-600 group-hover:text-white transition">
+              Browse
+            </span>
+          </div>
+
+          <!-- Suggested Query Pills -->
+          <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-lg mx-auto">
+            <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
+              🎵 Lyrics: Jhalak Dikhla Ja
+            </button>
+            <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
+              🎧 Play Jhalak Dikhla Ja
+            </button>
+            <button onclick="sendQuickPrompt('Show me the red sports car in the video')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
+              🏎️ Red sports car
+            </button>
+            <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
+              🚗 Car maintenance
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Bottom Input Area (Fixed, ChatGPT / Claude Style) -->
+    <div class="fixed bottom-0 left-0 right-0 md:left-72 bg-gradient-to-t from-[#0c0d12] via-[#0c0d12]/95 to-transparent pt-6 pb-4 px-4 z-20">
+      <div class="max-w-3xl mx-auto">
+        
+        <!-- Attached File Badge -->
+        <div id="attached-file-badge" class="hidden mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#13151f] border border-indigo-500/40 text-xs text-indigo-300 shadow-md">
           <i class="fa-solid fa-paperclip text-xs"></i>
           <span id="attached-file-name" class="font-medium truncate max-w-xs"></span>
-          <button onclick="clearAttachment()" class="text-slate-400 hover:text-white ml-1">
+          <button onclick="clearAttachment()" class="text-slate-400 hover:text-white ml-1 p-0.5">
             <i class="fa-solid fa-xmark text-xs"></i>
           </button>
         </div>
 
-        <!-- Chat Input Bar -->
-        <div class="bg-slate-900/90 backdrop-blur border border-slate-800 focus-within:border-indigo-500 rounded-2xl p-2 shadow-2xl transition flex items-center gap-2">
+        <!-- Input Bar -->
+        <div class="bg-[#13151f]/90 backdrop-blur-md border border-[#232738] focus-within:border-indigo-500/70 rounded-2xl p-2 shadow-2xl transition flex items-center gap-2">
           
-          <!-- Hidden File Upload -->
-          <input type="file" id="file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.wav,.mp3,.mp4,.mkv">
+          <input type="file" id="file-input" class="hidden" accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.webp,.wav,.mp3,.ogg,.flac,.mp4,.mkv">
+          
           <button 
             type="button" 
             onclick="document.getElementById('file-input').click()" 
-            title="Attach a file (PDF, MP3, MP4, JPG)"
-            class="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition shrink-0"
+            title="Attach documents, audio, images, or video"
+            class="w-9 h-9 rounded-xl hover:bg-[#1a1c2a] text-slate-400 hover:text-white flex items-center justify-center transition shrink-0"
           >
             <i class="fa-solid fa-paperclip text-sm"></i>
           </button>
 
-          <!-- Input Textbox -->
           <input 
             type="text" 
             id="user-input" 
-            placeholder="Message Multimodal AI, or attach a file..." 
+            placeholder="Ask anything, query lyrics, or drop any file..." 
             class="flex-1 bg-transparent text-sm placeholder-slate-500 outline-none text-slate-100 py-2 px-1"
             autocomplete="off"
           >
 
-          <!-- Send Button -->
           <button 
             type="button" 
             id="send-btn" 
@@ -141,52 +289,153 @@
           </button>
         </div>
 
+        <p class="text-[11px] text-slate-500 text-center mt-2 font-medium">
+          Multimodal AI runs 100% locally on your NVIDIA RTX 3050 Ti GPU • Private & Offline
+        </p>
+
       </div>
     </div>
 
-  </main>
+  </div>
+
+  <!-- Image Modal for Fullscreen Preview -->
+  <div id="image-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4" onclick="closeImageModal()">
+    <img id="modal-img" src="" alt="Preview" class="max-w-4xl max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-slate-800">
+  </div>
 
   <script>
+    // =========================================================================
+    // 1. THREE.JS 3D INTERACTIVE BACKGROUND
+    // =========================================================================
+    let scene, camera, renderer, particles, particleMesh;
+    let mouseX = 0, mouseY = 0;
+    let isThinking = false;
+
+    function initThree() {
+      const canvas = document.getElementById('three-canvas');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+      camera.position.z = 400;
+
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      // Particle Geometry (Interactive Neural Sphere)
+      const particleCount = 280;
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(particleCount * 3);
+      const radius = 220;
+
+      for (let i = 0; i < particleCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const r = radius * (0.8 + Math.random() * 0.4);
+
+        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i * 3 + 2] = r * Math.cos(phi);
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      // Particle Material
+      const material = new THREE.PointsMaterial({
+        color: 0x6366f1,
+        size: 2.8,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending
+      });
+
+      particleMesh = new THREE.Points(geometry, material);
+      scene.add(particleMesh);
+
+      window.addEventListener('resize', onWindowResize);
+      document.addEventListener('mousemove', onDocumentMouseMove);
+      animate();
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onDocumentMouseMove(event) {
+      mouseX = (event.clientX - window.innerWidth / 2) * 0.05;
+      mouseY = (event.clientY - window.innerHeight / 2) * 0.05;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const rotSpeed = isThinking ? 0.008 : 0.0015;
+      particleMesh.rotation.y += rotSpeed;
+      particleMesh.rotation.x += rotSpeed * 0.5;
+
+      camera.position.x += (mouseX - camera.position.x) * 0.03;
+      camera.position.y += (-mouseY - camera.position.y) * 0.03;
+      camera.lookAt(scene.position);
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('DOMContentLoaded', initThree);
+
+    // =========================================================================
+    // 2. CHAT & MULTIMODAL LOGIC
+    // =========================================================================
     let attachedFile = null;
 
-    // Reset Chat to clean initial state
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('-translate-x-full');
+      sidebar.classList.toggle('hidden');
+    }
+
     function resetChat() {
       const container = document.getElementById('messages-container');
       container.innerHTML = `
-        <div id="welcome-box" class="text-center my-auto py-12">
-          <div class="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center mx-auto text-2xl mb-4 border border-indigo-500/20 shadow-lg shadow-indigo-500/10">
+        <div id="welcome-screen" class="text-center py-12 my-auto">
+          <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600/20 via-violet-600/20 to-purple-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto text-3xl mb-5 shadow-2xl shadow-indigo-600/20">
             <i class="fa-solid fa-brain"></i>
           </div>
-          <h2 class="text-2xl font-bold text-white tracking-tight">How can I help you today?</h2>
+          <h2 class="text-3xl font-bold text-white tracking-tight">What would you like to explore?</h2>
           <p class="text-xs text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
-            Ask questions across your documents, listen to songs, search photos, or pinpoint video scenes.
+            Search across documents, ask for song lyrics, play audio tracks, view video scenes, or query photos.
           </p>
           <div 
-            onclick="document.getElementById('file-input').click()" 
-            class="mt-6 mx-auto max-w-md p-4 rounded-2xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition flex items-center gap-3.5 group text-left"
+            onclick="document.getElementById('file-input').click()"
+            class="mt-8 mx-auto max-w-lg p-5 rounded-2xl border border-dashed border-[#232738] hover:border-indigo-500/60 bg-[#13151f]/60 hover:bg-[#13151f] cursor-pointer transition flex items-center gap-4 group text-left shadow-lg"
           >
-            <div class="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-indigo-600/20 text-slate-400 group-hover:text-indigo-400 flex items-center justify-center text-base shrink-0 transition">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-600/10 group-hover:bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-xl shrink-0 transition border border-indigo-500/20">
               <i class="fa-solid fa-arrow-up-from-bracket"></i>
             </div>
             <div class="flex-1 min-w-0">
               <div class="text-xs font-semibold text-slate-200 group-hover:text-white transition">
-                Upload any document, audio, image, or video
+                Upload documents, songs, images, or videos
               </div>
               <div class="text-[11px] text-slate-500 truncate mt-0.5">
-                Click to browse, or drag & drop files anywhere
+                Drag & drop anywhere, or click to choose files (.pdf, .mp3, .wav, .mp4, .png)
               </div>
             </div>
-            <span class="text-xs text-slate-500 group-hover:text-indigo-400 transition font-medium">Browse</span>
+            <span class="text-xs text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 font-medium group-hover:bg-indigo-600 group-hover:text-white transition">
+              Browse
+            </span>
           </div>
-          <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-md mx-auto">
-            <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-              🎵 Play Jhalak Dikhla Ja
+          <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-lg mx-auto">
+            <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
+              🎵 Lyrics: Jhalak Dikhla Ja
             </button>
-            <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
-              🚗 Car engine maintenance
+            <button onclick="sendQuickPrompt('Play Jhalak Dikhla Ja song')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
+              🎧 Play Jhalak Dikhla Ja
             </button>
-            <button onclick="sendQuickPrompt('Show me the red sports car')" class="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition">
+            <button onclick="sendQuickPrompt('Show me the red sports car in the video')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
               🏎️ Red sports car
+            </button>
+            <button onclick="sendQuickPrompt('How do I maintain my car engine and prevent wear?')" class="px-3.5 py-2 rounded-full bg-[#13151f] hover:bg-[#1a1c2a] border border-[#232738] text-xs text-slate-300 hover:text-white transition shadow-sm">
+              🚗 Car maintenance
             </button>
           </div>
         </div>
@@ -195,13 +444,12 @@
       document.getElementById('user-input').value = '';
     }
 
-    // Quick Prompt
-    function sendQuickPrompt(text) {
-      document.getElementById('user-input').value = text;
+    function sendQuickPrompt(prompt) {
+      document.getElementById('user-input').value = prompt;
       handleSendMessage();
     }
 
-    // File Input Changed
+    // File Input
     document.getElementById('file-input').addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (file) {
@@ -221,7 +469,7 @@
       document.getElementById('attached-file-badge').classList.add('hidden');
     }
 
-    // Drag and Drop Handling on Window
+    // Drag and Drop
     let dragCounter = 0;
     const dropOverlay = document.getElementById('drop-overlay');
 
@@ -242,9 +490,7 @@
       }
     });
 
-    window.addEventListener('dragover', (e) => {
-      e.preventDefault();
-    });
+    window.addEventListener('dragover', (e) => e.preventDefault());
 
     window.addEventListener('drop', (e) => {
       e.preventDefault();
@@ -262,26 +508,25 @@
       const text = input.value.trim();
       if (!text && !attachedFile) return;
 
-      const welcomeBox = document.getElementById('welcome-box');
-      if (welcomeBox) welcomeBox.remove();
+      const welcome = document.getElementById('welcome-screen');
+      if (welcome) welcome.remove();
 
       const container = document.getElementById('messages-container');
 
-      // 1. If a file is attached, upload it first
+      // 1. Ingest attached file if present
       if (attachedFile) {
         const fileToUpload = attachedFile;
         clearAttachment();
 
-        // Show uploading message in chat
-        const uploadMsg = document.createElement('div');
-        uploadMsg.className = 'flex justify-end';
-        uploadMsg.innerHTML = `
-          <div class="bg-indigo-600/20 border border-indigo-500/30 text-indigo-200 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2">
-            <i class="fa-solid fa-spinner fa-spin"></i>
-            <span>Uploading & indexing <b>${fileToUpload.name}</b>...</span>
+        const uploadBubble = document.createElement('div');
+        uploadBubble.className = 'flex justify-end';
+        uploadBubble.innerHTML = `
+          <div class="bg-indigo-600/20 border border-indigo-500/30 text-indigo-200 text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2.5">
+            <i class="fa-solid fa-spinner fa-spin text-xs"></i>
+            <span>Uploading & indexing <b>${fileToUpload.name}</b> on local GPU...</span>
           </div>
         `;
-        container.appendChild(uploadMsg);
+        container.appendChild(uploadBubble);
 
         const formData = new FormData();
         formData.append('file', fileToUpload);
@@ -289,16 +534,16 @@
         try {
           const upRes = await fetch('/ingest/file', { method: 'POST', body: formData });
           const upData = await upRes.json();
-          uploadMsg.innerHTML = `
-            <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2">
-              <i class="fa-solid fa-check"></i>
+          uploadBubble.innerHTML = `
+            <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-sm">
+              <i class="fa-solid fa-check text-xs"></i>
               <span>Indexed <b>${fileToUpload.name}</b> into your knowledge base</span>
             </div>
           `;
         } catch (err) {
-          uploadMsg.innerHTML = `
-            <div class="bg-red-500/10 border border-red-500/20 text-red-300 text-xs px-3.5 py-2 rounded-xl">
-              Failed to upload ${fileToUpload.name}
+          uploadBubble.innerHTML = `
+            <div class="bg-red-500/10 border border-red-500/20 text-red-300 text-xs px-4 py-2.5 rounded-2xl">
+              Failed to upload ${fileToUpload.name}: ${err.message}
             </div>
           `;
         }
@@ -309,33 +554,36 @@
         return;
       }
 
-      // 2. Render User Message
+      // 2. Render User Message Bubble
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
       userBubble.innerHTML = `
-        <div class="bg-indigo-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed shadow-sm">
+        <div class="bg-indigo-600 text-white text-sm px-4 py-3 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed shadow-md shadow-indigo-600/10">
           ${text}
         </div>
       `;
       container.appendChild(userBubble);
       input.value = '';
 
-      // 3. Render Assistant Placeholder Bubble
+      // 3. Render Assistant Bubble with Thinking Indicator
       const botBubble = document.createElement('div');
-      botBubble.className = 'flex items-start gap-3';
+      botBubble.className = 'flex items-start gap-3.5';
       const botId = 'bot-' + Date.now();
       botBubble.innerHTML = `
-        <div class="w-7 h-7 rounded-lg bg-slate-800 text-indigo-400 flex items-center justify-center shrink-0 text-xs mt-1">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center shrink-0 text-xs mt-0.5 shadow-md shadow-indigo-600/20">
           <i class="fa-solid fa-sparkles"></i>
         </div>
         <div class="flex-1 space-y-3" id="${botId}">
-          <div class="text-sm text-slate-400 italic flex items-center gap-2">
-            <i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Thinking...
+          <div class="text-xs text-slate-400 italic flex items-center gap-2 py-1">
+            <i class="fa-solid fa-circle-notch fa-spin text-xs text-indigo-400"></i> Searching multimodal vectors & generating grounded answer...
           </div>
         </div>
       `;
       container.appendChild(botBubble);
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      scrollToBottom();
+
+      // Trigger 3D Particle Pulse
+      isThinking = true;
 
       // 4. Fetch RAG response
       try {
@@ -349,46 +597,73 @@
         const botContent = document.getElementById(botId);
         botContent.innerHTML = '';
 
-        // Text Answer
+        // Render AI Answer Markdown
         const answerText = document.createElement('div');
-        answerText.className = 'text-sm text-slate-200 leading-relaxed whitespace-pre-wrap';
-        answerText.textContent = data.answer || 'I could not find an answer based on your files.';
+        answerText.className = 'prose-custom text-sm text-slate-200 leading-relaxed';
+        answerText.innerHTML = marked.parse(data.answer || 'I could not find an answer grounded in your files.');
         botContent.appendChild(answerText);
 
-        // Render any media evidence attached
+        // Copy button
+        const actionsBar = document.createElement('div');
+        actionsBar.className = 'flex items-center gap-2 pt-1';
+        actionsBar.innerHTML = `
+          <button onclick="copyToClipboard(this, \`${escapeQuotes(data.answer || '')}\`)" class="text-[11px] text-slate-500 hover:text-slate-300 transition flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-800/50">
+            <i class="fa-regular fa-copy text-xs"></i> <span>Copy</span>
+          </button>
+        `;
+        botContent.appendChild(actionsBar);
+
+        // Render Media Cards
         const sources = data.sources || [];
         const mediaSources = sources.filter(s => s.similarity >= 0.55);
 
         if (mediaSources.length > 0) {
-          const mediaGrid = document.createElement('div');
-          mediaGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2';
+          const mediaContainer = document.createElement('div');
+          mediaContainer.className = 'pt-2 space-y-2';
+
+          const mediaHeader = document.createElement('div');
+          mediaHeader.className = 'text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5';
+          mediaHeader.innerHTML = `<i class="fa-solid fa-layer-group text-indigo-400"></i> Grounded Media & Evidence (${mediaSources.length})`;
+          mediaContainer.appendChild(mediaHeader);
+
+          const grid = document.createElement('div');
+          grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1';
 
           mediaSources.forEach(item => {
             const mod = (item.modality || 'text').toLowerCase();
             const filename = item.content ? item.content.split('/').pop() : item.source;
-
             const card = document.createElement('div');
-            card.className = 'bg-slate-900 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between';
+            card.className = 'bg-[#13151f] border border-[#232738] rounded-2xl p-3.5 flex flex-col justify-between hover:border-indigo-500/40 transition shadow-lg';
 
             if (mod === 'audio') {
               card.innerHTML = `
-                <div class="flex items-center justify-between text-xs mb-2">
-                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
-                  <span class="text-[10px] text-amber-400 font-mono">AUDIO</span>
+                <div>
+                  <div class="flex items-center justify-between text-xs mb-2">
+                    <span class="font-semibold text-slate-200 truncate pr-2">${item.title || filename}</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">AUDIO</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 truncate mb-2">Acoustic Match: ${Math.round((item.similarity || 0) * 100)}%</p>
                 </div>
-                <audio controls class="w-full h-8 rounded mt-1 bg-slate-950">
-                  <source src="/uploads/${filename}" type="audio/mpeg">
-                  <source src="/uploads/${filename}" type="audio/wav">
-                </audio>
+                <div class="bg-[#090a0f] p-2 rounded-xl border border-[#1a1c2a] mt-2">
+                  <audio controls class="w-full h-8 rounded bg-transparent">
+                    <source src="/uploads/${filename}" type="audio/mpeg">
+                    <source src="/uploads/${filename}" type="audio/wav">
+                  </audio>
+                </div>
               `;
             } else if (mod === 'image') {
               card.innerHTML = `
-                <div class="flex items-center justify-between text-xs mb-1.5">
-                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
-                  <span class="text-[10px] text-emerald-400 font-mono">IMAGE</span>
-                </div>
-                <div class="rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black flex items-center justify-center">
-                  <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover">
+                <div>
+                  <div class="flex items-center justify-between text-xs mb-2">
+                    <span class="font-semibold text-slate-200 truncate pr-2">${item.title || filename}</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IMAGE</span>
+                  </div>
+                  <div class="rounded-xl overflow-hidden border border-[#232738] aspect-video bg-black flex items-center justify-center cursor-pointer group relative" onclick="openImageModal('/uploads/${filename}')">
+                    <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs gap-1.5">
+                      <i class="fa-solid fa-expand"></i> Click to enlarge
+                    </div>
+                  </div>
                 </div>
               `;
             } else if (mod === 'video') {
@@ -403,44 +678,84 @@
                 }
               }
               card.innerHTML = `
-                <div class="flex items-center justify-between text-xs mb-1.5">
-                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
-                  <span class="text-[10px] text-pink-400 font-mono">VIDEO</span>
-                </div>
-                <div class="rounded-lg overflow-hidden border border-slate-800 aspect-video bg-black relative flex items-center justify-center">
-                  <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
-                  <span class="absolute bottom-1.5 right-1.5 bg-black/80 font-mono text-[9px] text-white px-1.5 py-0.5 rounded">
-                    Keyframe
-                  </span>
+                <div>
+                  <div class="flex items-center justify-between text-xs mb-2">
+                    <span class="font-semibold text-slate-200 truncate pr-2">${item.title || filename}</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/20">VIDEO</span>
+                  </div>
+                  <div class="rounded-xl overflow-hidden border border-[#232738] aspect-video bg-black relative flex items-center justify-center">
+                    <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
+                    <span class="absolute bottom-2 right-2 bg-black/80 font-mono text-[10px] text-white px-2 py-0.5 rounded border border-white/20">
+                      Keyframe
+                    </span>
+                  </div>
                 </div>
               `;
             } else {
               card.innerHTML = `
-                <div class="flex items-center justify-between text-xs mb-1">
-                  <span class="font-medium text-slate-200 truncate">${item.title || filename}</span>
-                  <span class="text-[10px] text-blue-400 font-mono">DOC</span>
+                <div>
+                  <div class="flex items-center justify-between text-xs mb-2">
+                    <span class="font-semibold text-slate-200 truncate pr-2">${item.title || filename}</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">DOC</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 font-mono line-clamp-3 leading-relaxed mt-1">${item.content || item.title}</p>
                 </div>
-                <p class="text-[11px] text-slate-400 line-clamp-3 leading-relaxed mt-1 font-mono">${item.content || item.title}</p>
               `;
             }
-            mediaGrid.appendChild(card);
+            grid.appendChild(card);
           });
 
-          botContent.appendChild(mediaGrid);
+          mediaContainer.appendChild(grid);
+          botContent.appendChild(mediaContainer);
         }
+
       } catch (err) {
         const botContent = document.getElementById(botId);
-        botContent.innerHTML = `<span class="text-red-400 text-sm">Error: ${err.message}</span>`;
+        botContent.innerHTML = `<span class="text-red-400 text-xs">Error: ${err.message}</span>`;
       } finally {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        isThinking = false;
+        scrollToBottom();
       }
     }
 
-    // Allow Enter key to send
+    function scrollToBottom() {
+      const stream = document.getElementById('chat-stream');
+      stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
+    }
+
+    function escapeQuotes(str) {
+      return str.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    }
+
+    function copyToClipboard(btn, text) {
+      navigator.clipboard.writeText(text);
+      const span = btn.querySelector('span');
+      span.textContent = 'Copied!';
+      setTimeout(() => span.textContent = 'Copy', 2000);
+    }
+
+    function openImageModal(src) {
+      const modal = document.getElementById('image-modal');
+      document.getElementById('modal-img').src = src;
+      modal.classList.remove('hidden');
+    }
+
+    function closeImageModal() {
+      document.getElementById('image-modal').classList.add('hidden');
+    }
+
     document.getElementById('user-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         handleSendMessage();
+      }
+    });
+
+    // Keyboard shortcut Ctrl+K to new chat
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        resetChat();
       }
     });
   </script>

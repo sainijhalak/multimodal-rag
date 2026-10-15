@@ -85,14 +85,16 @@ class MultimodalRAGEngine:
             elif mod == "IMAGE":
                 context_parts.append(f"[{rank}] {mod} Image '{title}' (from {src})")
             elif mod == "AUDIO":
-                context_parts.append(f"[{rank}] {mod} Audio Clip '{title}' (from {src})")
+                context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
 
         context_str = "\n\n".join(context_parts)
 
         system_prompt = (
-            "You are a helpful, accurate multimodal AI assistant. "
-            "Answer the user's question clearly and concisely based on the retrieved context below. "
-            "Cite relevant documents, images, audio, or video timestamps when answering."
+            "You are a helpful, knowledgeable multimodal AI assistant. "
+            "Answer the user's question clearly and accurately based on the retrieved context. "
+            "When answering about songs, audio tracks, images, or videos: "
+            "provide lyrics, artist details, visual descriptions, or summaries provided in the context, "
+            "and cite the relevant documents or media files."
         )
 
         user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
