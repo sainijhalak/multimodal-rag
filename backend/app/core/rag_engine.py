@@ -89,7 +89,16 @@ class MultimodalRAGEngine:
                 seen.add(key)
                 combined_items.append(item)
 
-        retrieved_items = combined_items[:max(top_k, len(retrieved_items))]
+        # Strict relevance filtering: eliminate unrelated filler results
+        filtered_items = []
+        if combined_items:
+            top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
+            for item in combined_items:
+                sim = item.get("similarity", 0)
+                if sim >= 0.70 and sim >= (top_sim - 0.12):
+                    filtered_items.append(item)
+
+        retrieved_items = filtered_items[:top_k] if filtered_items else combined_items[:1]
 
         # Format multimodal context with source types and timestamps
         context_parts = []

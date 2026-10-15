@@ -513,9 +513,9 @@
         `;
         botContent.appendChild(actionsBar);
 
-        // Render Media Cards
+        // Render Media Cards with strict 0.70 relevance threshold
         const sources = data.sources || [];
-        const mediaSources = sources.filter(s => s.similarity >= 0.55);
+        const mediaSources = sources.filter(s => (s.similarity || 0) >= 0.70);
 
         if (mediaSources.length > 0) {
           const mediaContainer = document.createElement('div');
