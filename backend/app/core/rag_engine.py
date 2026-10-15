@@ -136,3 +136,86 @@ class MultimodalRAGEngine:
             "answer": response,
             "sources": retrieved_items
         }
+
+    async def answer_stream(self, query: str, top_k: int = 4, context_file: Optional[str] = None):
+        """Streaming version of answer(): yields sources immediately, then streams generated tokens."""
+        retrieved_items = []
+
+        if context_file:
+            try:
+                file_items = self.vector_store.search_by_source(context_file)
+                retrieved_items.extend(file_items)
+            except Exception as e:
+                logger.warning(f"Could not fetch chunks for context_file '{context_file}': {e}")
+
+        # Semantic retrieval in worker thread to prevent event loop blocking
+        import asyncio
+        semantic_items = await asyncio.to_thread(self.retrieve, query, top_k=top_k)
+
+        # Deduplicate
+        seen = set()
+        combined_items = []
+        for item in (retrieved_items + semantic_items):
+            key = (item.get("source"), item.get("modality"), item.get("title"))
+            if key not in seen:
+                seen.add(key)
+                combined_items.append(item)
+
+        # Strict relevance filtering
+        filtered_items = []
+        if combined_items:
+            top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
+            for item in combined_items:
+                sim = item.get("similarity", 0)
+                if sim >= 0.70 and sim >= (top_sim - 0.12):
+                    filtered_items.append(item)
+
+        retrieved_items = filtered_items[:top_k] if filtered_items else combined_items[:1]
+
+        # Format context
+        context_parts = []
+        for rank, item in enumerate(retrieved_items, start=1):
+            mod = item.get("modality", "text").upper()
+            src = item.get("source", "unknown")
+            title = item.get("title", "")
+            cnt = item.get("content", "")
+
+            if mod == "TEXT":
+                context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
+            elif mod == "VIDEO":
+                context_parts.append(f"[{rank}] {mod} Keyframe '{title}' (from {src})")
+            elif mod == "IMAGE":
+                context_parts.append(f"[{rank}] {mod} Image '{title}' (from {src})")
+            elif mod == "AUDIO":
+                context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
+
+        context_str = "\n\n".join(context_parts)
+
+        system_prompt = (
+            "You are a helpful, intelligent multimodal AI assistant. "
+            "Answer the user's question clearly, concisely, and accurately based on the retrieved context below. "
+            "When explaining flowcharts or processes, break down the sequential steps. "
+            "When answering about songs, provide lyrics from the context. "
+            "Always cite the source files."
+        )
+
+        user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
+
+        # 1. Yield sources immediately so UI renders media cards instantly
+        yield {
+            "type": "sources",
+            "sources": retrieved_items
+        }
+
+        # 2. Stream tokens in real time
+        async for token in self.llm.stream_response(user_prompt, system_prompt=system_prompt):
+            yield {
+                "type": "token",
+                "token": token
+            }
+
+        # 3. Final completion signal
+        yield {
+            "type": "done"
+        }
+

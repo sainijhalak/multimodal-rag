@@ -57,11 +57,13 @@ class LocalLLM:
             with torch.no_grad():
                 generated_ids = self.model.generate(
                     **model_inputs,
-                    max_new_tokens=384,
+                    max_new_tokens=220,
                     temperature=0.3,
                     repetition_penalty=1.1,
                     do_sample=True,
-                    top_p=0.9
+                    top_p=0.9,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id
                 )
 
             # Strip input prompt tokens
@@ -90,11 +92,13 @@ class LocalLLM:
         generation_kwargs = dict(
             **model_inputs,
             streamer=streamer,
-            max_new_tokens=384,
+            max_new_tokens=220,
             temperature=0.3,
             repetition_penalty=1.1,
             do_sample=True,
-            top_p=0.9
+            top_p=0.9,
+            pad_token_id=self.tokenizer.eos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id
         )
 
         thread = threading.Thread(target=self.model.generate, kwargs=generation_kwargs)
@@ -103,6 +107,6 @@ class LocalLLM:
         for chunk in streamer:
             if chunk:
                 yield chunk
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.002)
 
         thread.join()

@@ -721,7 +721,7 @@
       container.appendChild(botBubble);
       scrollToBottom();
 
-      // 4. Fetch RAG response
+      // 4. Fetch Streaming RAG response
       try {
         const payload = {
           query: text,
@@ -729,121 +729,76 @@
           context_file: currentContextFile
         };
 
-        const res = await fetch('/query/ask', {
+        const res = await fetch('/query/ask_stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
+
+        if (!res.ok) throw new Error(`Server responded with ${res.status}`);
 
         const botContent = document.getElementById(botId);
         botContent.innerHTML = '';
 
-        // Render AI Answer Markdown
+        // 1. Media Cards Container (shows immediately when sources arrive)
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'space-y-2 hidden mb-3';
+        botContent.appendChild(mediaContainer);
+
+        // 2. AI Answer Container (streams token by token)
         const answerText = document.createElement('div');
         answerText.className = 'prose-wine text-sm leading-relaxed';
-        answerText.innerHTML = marked.parse(data.answer || 'I could not find an answer grounded in your files.');
         botContent.appendChild(answerText);
 
-        // Copy button
+        // 3. Actions Bar (Copy button)
         const actionsBar = document.createElement('div');
-        actionsBar.className = 'flex items-center gap-2 pt-1';
-        actionsBar.innerHTML = `
-          <button onclick="copyToClipboard(this, \`${escapeQuotes(data.answer || '')}\`)" class="text-[11px] opacity-60 hover:opacity-100 transition flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-950/20">
-            <i class="fa-regular fa-copy text-xs"></i> <span>Copy</span>
-          </button>
-        `;
+        actionsBar.className = 'flex items-center gap-2 pt-1 hidden';
         botContent.appendChild(actionsBar);
 
-        // Render Media Evidence Cards (Strict 0.70 threshold)
-        const sources = data.sources || [];
-        const mediaSources = sources.filter(s => (s.similarity || 0) >= 0.70);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let fullAnswer = '';
+        let buffer = '';
 
-        if (mediaSources.length > 0) {
-          const mediaContainer = document.createElement('div');
-          mediaContainer.className = 'pt-2 space-y-2';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-          const grid = document.createElement('div');
-          grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1';
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop(); // keep trailing partial line
 
-          mediaSources.forEach(item => {
-            const mod = (item.modality || 'text').toLowerCase();
-            const filename = item.content ? item.content.split('/').pop() : item.source;
-            const card = document.createElement('div');
-            card.className = 'theme-card border rounded-2xl p-3.5 flex flex-col justify-between shadow-sm';
+          for (const part of parts) {
+            const trimmed = part.trim();
+            if (!trimmed.startsWith('data: ')) continue;
+            const dataStr = trimmed.slice(6).trim();
+            if (dataStr === '[DONE]') continue;
 
-            if (mod === 'audio') {
-              card.innerHTML = `
-                <div>
-                  <div class="flex items-center justify-between text-xs mb-2">
-                    <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">AUDIO</span>
-                  </div>
-                  <p class="text-[11px] opacity-60 truncate mb-1">Match: ${Math.round((item.similarity || 0) * 100)}%</p>
-                </div>
-                <div class="mt-2 p-1.5 rounded-xl bg-black/20 border border-inherit">
-                  <audio controls class="w-full h-8 rounded bg-transparent">
-                    <source src="/uploads/${filename}" type="audio/mpeg">
-                    <source src="/uploads/${filename}" type="audio/wav">
-                  </audio>
-                </div>
-              `;
-            } else if (mod === 'image') {
-              card.innerHTML = `
-                <div>
-                  <div class="flex items-center justify-between text-xs mb-2">
-                    <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">IMAGE</span>
-                  </div>
-                  <div class="rounded-xl overflow-hidden border border-inherit aspect-video bg-black/40 flex items-center justify-center cursor-pointer group relative" onclick="openImageModal('/uploads/${filename}')">
-                    <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-102 transition duration-200">
-                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs gap-1.5">
-                      <i class="fa-solid fa-expand"></i> Click to enlarge
-                    </div>
-                  </div>
-                </div>
-              `;
-            } else if (mod === 'video') {
-              let frameFile = filename;
-              if (!frameFile.endsWith('.jpg') && !frameFile.endsWith('.png')) {
-                const match = (item.title + ' ' + item.content).match(/(\d\d):(\d\d)/);
-                if (match) {
-                  const sec = parseInt(match[1]) * 60 + parseInt(match[2]);
-                  frameFile = `tech_presentation_t${String(sec).padStart(4, '0')}.jpg`;
-                } else {
-                  frameFile = 'tech_presentation_t0000.jpg';
-                }
+            try {
+              const msg = JSON.parse(dataStr);
+              if (msg.type === 'sources') {
+                renderMediaSources(mediaContainer, msg.sources || []);
+              } else if (msg.type === 'token') {
+                fullAnswer += msg.token;
+                answerText.innerHTML = marked.parse(fullAnswer);
+                scrollToBottom();
+              } else if (msg.type === 'error') {
+                answerText.innerHTML += `<p class="text-rose-400 text-xs mt-1">Error: ${msg.error}</p>`;
               }
-              card.innerHTML = `
-                <div>
-                  <div class="flex items-center justify-between text-xs mb-2">
-                    <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-500 border border-pink-500/20">VIDEO</span>
-                  </div>
-                  <div class="rounded-xl overflow-hidden border border-inherit aspect-video bg-black/40 relative flex items-center justify-center">
-                    <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
-                    <span class="absolute bottom-2 right-2 bg-black/80 font-mono text-[9px] text-white px-1.5 py-0.5 rounded">
-                      Keyframe
-                    </span>
-                  </div>
-                </div>
-              `;
-            } else {
-              card.innerHTML = `
-                <div>
-                  <div class="flex items-center justify-between text-xs mb-1.5">
-                    <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">DOC</span>
-                  </div>
-                  <p class="text-[11px] opacity-75 font-mono line-clamp-3 leading-relaxed mt-1">${item.content || item.title}</p>
-                </div>
-              `;
+            } catch (err) {
+              console.warn('SSE parse error:', err, dataStr);
             }
-            grid.appendChild(card);
-          });
+          }
+        }
 
-          mediaContainer.appendChild(grid);
-          botContent.appendChild(mediaContainer);
+        // Show actions bar with copy button once stream finishes
+        if (fullAnswer.trim()) {
+          actionsBar.classList.remove('hidden');
+          actionsBar.innerHTML = `
+            <button onclick="copyToClipboard(this, \`${escapeQuotes(fullAnswer)}\`)" class="text-[11px] opacity-60 hover:opacity-100 transition flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-950/20">
+              <i class="fa-regular fa-copy text-xs"></i> <span>Copy</span>
+            </button>
+          `;
         }
 
       } catch (err) {
@@ -852,6 +807,100 @@
       } finally {
         scrollToBottom();
       }
+    }
+
+    function renderMediaSources(container, sources) {
+      const mediaSources = sources.filter(s => (s.similarity || 0) >= 0.70);
+      if (mediaSources.length === 0) return;
+
+      container.innerHTML = '';
+      container.classList.remove('hidden');
+
+      const label = document.createElement('div');
+      label.className = 'text-[11px] font-semibold opacity-70 flex items-center gap-1.5 uppercase tracking-wider mb-1';
+      label.innerHTML = '<i class="fa-solid fa-layer-group text-rose-500 text-xs"></i> Retrieved Grounding Media:';
+      container.appendChild(label);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+
+      mediaSources.forEach(item => {
+        const mod = (item.modality || 'text').toLowerCase();
+        const filename = item.content ? item.content.split('/').pop() : item.source;
+        const card = document.createElement('div');
+        card.className = 'theme-card border rounded-2xl p-3.5 flex flex-col justify-between shadow-sm';
+
+        if (mod === 'audio') {
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-2">
+                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">AUDIO</span>
+              </div>
+              <p class="text-[11px] opacity-60 truncate mb-1">Match: ${Math.round((item.similarity || 0) * 100)}%</p>
+            </div>
+            <div class="mt-2 p-1.5 rounded-xl bg-black/20 border border-inherit">
+              <audio controls class="w-full h-8 rounded bg-transparent">
+                <source src="/uploads/${filename}" type="audio/mpeg">
+                <source src="/uploads/${filename}" type="audio/wav">
+              </audio>
+            </div>
+          `;
+        } else if (mod === 'image') {
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-2">
+                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">IMAGE</span>
+              </div>
+              <div class="rounded-xl overflow-hidden border border-inherit aspect-video bg-black/40 flex items-center justify-center cursor-pointer group relative" onclick="openImageModal('/uploads/${filename}')">
+                <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-102 transition duration-200">
+                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs gap-1.5">
+                  <i class="fa-solid fa-expand"></i> Click to enlarge
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (mod === 'video') {
+          let frameFile = filename;
+          if (!frameFile.endsWith('.jpg') && !frameFile.endsWith('.png')) {
+            const match = (item.title + ' ' + item.content).match(/(\d\d):(\d\d)/);
+            if (match) {
+              const sec = parseInt(match[1]) * 60 + parseInt(match[2]);
+              frameFile = `tech_presentation_t${String(sec).padStart(4, '0')}.jpg`;
+            } else {
+              frameFile = 'tech_presentation_t0000.jpg';
+            }
+          }
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-2">
+                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-500 border border-pink-500/20">VIDEO</span>
+              </div>
+              <div class="rounded-xl overflow-hidden border border-inherit aspect-video bg-black/40 relative flex items-center justify-center">
+                <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
+                <span class="absolute bottom-2 right-2 bg-black/80 font-mono text-[9px] text-white px-1.5 py-0.5 rounded">
+                  Keyframe
+                </span>
+              </div>
+            </div>
+          `;
+        } else {
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">DOC</span>
+              </div>
+              <p class="text-[11px] opacity-75 font-mono line-clamp-3 leading-relaxed mt-1">${item.content || item.title}</p>
+            </div>
+          `;
+        }
+        grid.appendChild(card);
+      });
+
+      container.appendChild(grid);
     }
 
     function scrollToBottom() {

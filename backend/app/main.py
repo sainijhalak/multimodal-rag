@@ -1,3 +1,6 @@
+import asyncio
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,10 +9,26 @@ from fastapi.responses import FileResponse
 from .api import health_router, ingest_router, search_router
 from .config import settings
 
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Pre-warm Embedding and LLM models in memory so there's zero cold-start latency
+    try:
+        from .api.routes_search import engine
+        logger.info("⚡ Pre-warming Embedding and LLM models into GPU/CPU memory...")
+        await asyncio.to_thread(engine.embedder.load_model)
+        await asyncio.to_thread(engine.llm._load_model)
+        logger.info("✅ Multimodal models hot and ready in memory!")
+    except Exception as e:
+        logger.warning(f"Could not pre-warm models: {e}")
+    yield
+
 app = FastAPI(
     title="Local Multimodal RAG API",
     description="Offline-first Multimodal RAG powered by Google EmbeddingGemma-2 & LanceDB",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS for local development and future Vercel frontend deployment

@@ -29,3 +29,28 @@ async def rag_ask(req: QueryRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ask_stream")
+async def rag_ask_stream(req: QueryRequest):
+    """Real-time Streaming Multimodal RAG: SSE stream with instant sources and token-by-token text."""
+    from fastapi.responses import StreamingResponse
+    import json
+
+    async def event_generator():
+        try:
+            async for chunk in engine.answer_stream(req.query, top_k=req.top_k, context_file=req.context_file):
+                yield f"data: {json.dumps(chunk)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
