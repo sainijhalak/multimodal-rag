@@ -1,0 +1,15 @@
+services:
+  multimodal-rag:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multimodal-rag
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      # Persist vector database and uploaded files across container restarts
+      - ./data:/app/data
+    restart: unless-stopped
