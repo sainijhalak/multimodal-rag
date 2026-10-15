@@ -108,3 +108,24 @@ class LanceDBStore(BaseVectorStore):
 
         results.sort(key=lambda x: x["similarity"], reverse=True)
         return results
+
+    def search_by_source(self, source_name: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieves chunks by matching source filename directly."""
+        if self.table is None:
+            self.initialize()
+        clean_name = source_name.replace("'", "")
+        try:
+            raw_results = self.table.search().where(f"source = '{clean_name}'").limit(limit).to_list()
+            results = []
+            for r in raw_results:
+                results.append({
+                    "title": r.get("title", ""),
+                    "content": r.get("content", ""),
+                    "source": r.get("source", ""),
+                    "modality": r.get("modality", "text"),
+                    "similarity": 1.0,
+                })
+            return results
+        except Exception as e:
+            logger.warning(f"Failed to query by source: {e}")
+            return []

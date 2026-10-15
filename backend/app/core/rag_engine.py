@@ -37,27 +37,26 @@ class MultimodalRAGEngine:
         if not chunks:
             return 0
 
-        modalities = [c.modality for c in chunks]
-        metadatas = [c.metadata for c in chunks]
-        modality = modalities[0]
+        # Group chunks by modality so mixed outputs (e.g. image + OCR text) are encoded properly
+        from collections import defaultdict
+        chunks_by_mod = defaultdict(list)
+        for c in chunks:
+            chunks_by_mod[c.modality].append(c)
 
-        # Prepare items for embedder based on modality
-        if modality in ("image", "video"):
-            # Load images / keyframes via PIL for vision encoder
-            embed_items = [Image.open(c.content) for c in chunks]
-        elif modality == "audio":
-            # Audio paths passed directly
-            embed_items = [str(c.content) for c in chunks]
-        else:
-            # Text content
-            embed_items = [str(c.content) for c in chunks]
+        for mod, mod_chunks in chunks_by_mod.items():
+            if mod in ("image", "video"):
+                embed_items = [Image.open(c.content) for c in mod_chunks]
+            elif mod == "audio":
+                embed_items = [str(c.content) for c in mod_chunks]
+            else:
+                embed_items = [str(c.content) for c in mod_chunks]
 
-        # Vectorize
-        vectors = self.embedder.embed_corpus(embed_items, modality=modality)
+            vectors = self.embedder.embed_corpus(embed_items, modality=mod)
+            db_contents = [str(c.content) for c in mod_chunks]
+            modalities = [c.modality for c in mod_chunks]
+            metadatas = [c.metadata for c in mod_chunks]
+            self.vector_store.add(vectors, db_contents, modalities, metadatas)
 
-        # Content strings stored in DB
-        db_contents = [str(c.content) for c in chunks]
-        self.vector_store.add(vectors, db_contents, modalities, metadatas)
         return len(chunks)
 
     def retrieve(self, query: str, top_k: int = 5, modality: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -66,9 +65,31 @@ class MultimodalRAGEngine:
         results = self.vector_store.search(query_vector, top_k=top_k, modality=modality)
         return results
 
-    async def answer(self, query: str, top_k: int = 4) -> Dict[str, Any]:
+    async def answer(self, query: str, top_k: int = 4, context_file: Optional[str] = None) -> Dict[str, Any]:
         """Performs RAG: retrieves relevant chunks and asks the local LLM."""
-        retrieved_items = self.retrieve(query, top_k=top_k)
+        retrieved_items = []
+
+        # If a specific file was uploaded/attached, fetch its chunks directly
+        if context_file:
+            try:
+                file_items = self.vector_store.search_by_source(context_file)
+                retrieved_items.extend(file_items)
+            except Exception as e:
+                logger.warning(f"Could not fetch chunks for context_file '{context_file}': {e}")
+
+        # Retrieve semantically nearest items
+        semantic_items = self.retrieve(query, top_k=top_k)
+
+        # Deduplicate while preserving priority
+        seen = set()
+        combined_items = []
+        for item in (retrieved_items + semantic_items):
+            key = (item.get("source"), item.get("modality"), item.get("title"))
+            if key not in seen:
+                seen.add(key)
+                combined_items.append(item)
+
+        retrieved_items = combined_items[:max(top_k, len(retrieved_items))]
 
         # Format multimodal context with source types and timestamps
         context_parts = []
@@ -79,7 +100,7 @@ class MultimodalRAGEngine:
             cnt = item.get("content", "")
 
             if mod == "TEXT":
-                context_parts.append(f"[{rank}] {mod} Document '{title}' (from {src}):\n{cnt}")
+                context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
             elif mod == "VIDEO":
                 context_parts.append(f"[{rank}] {mod} Keyframe '{title}' (from {src})")
             elif mod == "IMAGE":
@@ -90,11 +111,12 @@ class MultimodalRAGEngine:
         context_str = "\n\n".join(context_parts)
 
         system_prompt = (
-            "You are a helpful, knowledgeable multimodal AI assistant. "
-            "Answer the user's question clearly and accurately based on the retrieved context. "
-            "When answering about songs, audio tracks, images, or videos: "
-            "provide lyrics, artist details, visual descriptions, or summaries provided in the context, "
-            "and cite the relevant documents or media files."
+            "You are a helpful, intelligent multimodal AI assistant. "
+            "Answer the user's question clearly and accurately based on the retrieved context below. "
+            "When explaining flowcharts, architecture diagrams, or processes: "
+            "break down each step, decision diamond, valid/invalid path, database interaction, and error/success code in sequence. "
+            "When answering about songs, provide lyrics and details from the context. "
+            "Always cite the source files."
         )
 
         user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
