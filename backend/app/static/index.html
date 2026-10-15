@@ -174,37 +174,46 @@
   <!-- Left Sidebar (Collapsible, Wine Aesthetic) -->
   <aside id="sidebar" class="w-68 bg-[#11070a] border-r border-[#260e19] flex flex-col shrink-0 z-30 transition-all duration-300 theme-surface">
     
-    <!-- Header with Branding -->
-    <div class="p-4 border-b border-inherit flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-900 to-rose-700 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-rose-950/50">
-          <i class="fa-solid fa-sparkles text-xs"></i>
+    <!-- Header with Branding & New Chat -->
+    <div class="p-3.5 border-b border-inherit">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-900 to-rose-700 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-rose-950/50">
+            <i class="fa-solid fa-sparkles text-xs"></i>
+          </div>
+          <div>
+            <span class="font-bold text-sm tracking-tight block leading-tight">Multimodal AI</span>
+            <span class="text-[10px] text-rose-500 font-mono">Wine Studio</span>
+          </div>
         </div>
-        <div>
-          <span class="font-bold text-sm tracking-tight block leading-tight">Multimodal AI</span>
-          <span class="text-[10px] text-rose-500 font-mono">Wine Studio</span>
-        </div>
+
+        <button onclick="startNewChat()" class="p-1.5 rounded-lg hover:bg-rose-950/30 transition text-inherit opacity-75 hover:opacity-100" title="New conversation">
+          <i class="fa-regular fa-pen-to-square text-xs"></i>
+        </button>
       </div>
 
-      <button onclick="resetChat()" class="p-1.5 rounded-lg hover:bg-rose-950/30 transition text-inherit opacity-75 hover:opacity-100" title="New conversation">
-        <i class="fa-regular fa-pen-to-square text-xs"></i>
+      <button onclick="startNewChat()" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-rose-900/40 hover:bg-rose-900 text-rose-200 hover:text-white text-xs font-semibold shadow-sm transition border border-rose-800/40 mt-3">
+        <i class="fa-solid fa-plus text-xs"></i>
+        <span>New Chat</span>
       </button>
     </div>
 
-    <!-- Frequent & Recent Queries List -->
-    <div class="flex-1 overflow-y-auto p-3 space-y-3">
+    <!-- Scrollable History & Frequent Queries -->
+    <div class="flex-1 overflow-y-auto p-3 space-y-4">
       
-      <!-- User's Recent Inquiries (Dynamic) -->
-      <div id="recent-queries-section" class="hidden space-y-1">
-        <div class="flex items-center justify-between px-2.5 py-0.5">
-          <span class="text-[10px] font-bold text-rose-400/90 uppercase tracking-wider">Your Recents</span>
-          <button onclick="clearRecentQueries()" class="text-[9px] opacity-50 hover:opacity-100 hover:text-rose-400 transition">Clear</button>
+      <!-- Chat History Section -->
+      <div class="space-y-1">
+        <div class="text-[10px] font-bold text-rose-500/80 uppercase px-2.5 py-1 tracking-wider flex items-center justify-between">
+          <span>Conversations</span>
+          <span id="session-count" class="text-[9px] opacity-50 font-normal"></span>
         </div>
-        <div id="recent-queries-list" class="space-y-1"></div>
+        <div id="chat-history-list" class="space-y-1">
+          <!-- Populated dynamically from localStorage -->
+        </div>
       </div>
 
       <!-- Curated Most Frequent Inquiries -->
-      <div class="space-y-1">
+      <div class="space-y-1 pt-3 border-t border-inherit">
         <div class="text-[10px] font-bold text-rose-500/80 uppercase px-2.5 py-1 tracking-wider">Frequent Inquiries</div>
 
         <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Explain flowchart">
@@ -286,7 +295,7 @@
         </button>
 
         <button 
-          onclick="resetChat()" 
+          onclick="startNewChat()" 
           class="px-3 py-1.5 rounded-xl bg-rose-900 hover:bg-rose-800 text-white text-xs font-semibold shadow-md shadow-rose-950/40 transition flex items-center gap-1.5"
         >
           <i class="fa-solid fa-plus text-xs"></i>
@@ -539,111 +548,287 @@
     // =========================================================================
     // 3. MULTIMODAL CHAT & OCR ROUTING
     // =========================================================================
+    // =========================================================================
+    // 3. MULTI-SESSION CHAT PERSISTENCE & HISTORY ENGINE (ChatGPT / Claude Style)
+    // =========================================================================
+    let chatSessions = [];
+    let activeSessionId = null;
     let attachedFile = null;
     let lastUploadedFilename = null;
+
+    function loadSessions() {
+      try {
+        const raw = localStorage.getItem('multimodal_chat_sessions');
+        chatSessions = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        chatSessions = [];
+      }
+    }
+
+    function saveSessions() {
+      try {
+        localStorage.setItem('multimodal_chat_sessions', JSON.stringify(chatSessions));
+      } catch (e) {
+        console.error('Failed to save sessions:', e);
+      }
+    }
 
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       sidebar.classList.toggle('hidden');
     }
 
-    function resetChat() {
+    function generateChatTitle(text) {
+      if (!text) return 'New Conversation';
+      const clean = text.trim();
+      const lower = clean.toLowerCase();
+      if (lower.includes('flowchart') || lower.includes('diagram')) return 'Flowchart Breakdown';
+      if (lower.includes('jhalak') || lower.includes('lyrics')) return 'Jhalak Dikhla Ja Lyrics';
+      if (lower.includes('batman')) return 'Batman Dossier';
+      if (lower.includes('folder') || lower.includes('put documents') || lower.includes('upload')) return 'File Placement Guide';
+      if (lower.includes('deploy')) return 'Deployment Guide';
+      if (lower.includes('database')) return 'Database Overview';
+      
+      const words = clean.split(/\s+/).slice(0, 4).join(' ');
+      return words.length > 24 ? words.slice(0, 24) + '...' : words;
+    }
+
+    function createNewSession(initialTitle = 'New Conversation') {
+      const newSession = {
+        id: 'session_' + Date.now(),
+        title: initialTitle,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: []
+      };
+      chatSessions.unshift(newSession);
+      activeSessionId = newSession.id;
+      saveSessions();
+      renderChatHistory();
+      return newSession;
+    }
+
+    function getActiveSession() {
+      if (!activeSessionId) return null;
+      return chatSessions.find(s => s.id === activeSessionId) || null;
+    }
+
+    function startNewChat() {
+      activeSessionId = null;
+      clearAttachment();
+      lastUploadedFilename = null;
+      document.getElementById('user-input').value = '';
+      showWelcomeScreen();
+      renderChatHistory();
+    }
+
+    function selectSession(sessionId) {
+      activeSessionId = sessionId;
+      const session = chatSessions.find(s => s.id === sessionId);
+      if (!session) {
+        startNewChat();
+        return;
+      }
+
+      const container = document.getElementById('messages-container');
+      container.innerHTML = '';
+
+      if (session.messages.length === 0) {
+        showWelcomeScreen();
+      } else {
+        session.messages.forEach(msg => {
+          if (msg.role === 'user') {
+            renderUserBubble(msg.content, container);
+          } else if (msg.role === 'assistant') {
+            renderAssistantBubble(msg.content, container);
+          }
+        });
+        scrollToBottom();
+      }
+
+      renderChatHistory();
+    }
+
+    function deleteSession(sessionId) {
+      chatSessions = chatSessions.filter(s => s.id !== sessionId);
+      saveSessions();
+      if (activeSessionId === sessionId) {
+        if (chatSessions.length > 0) {
+          selectSession(chatSessions[0].id);
+        } else {
+          startNewChat();
+        }
+      } else {
+        renderChatHistory();
+      }
+    }
+
+    function renderChatHistory() {
+      const list = document.getElementById('chat-history-list');
+      const countLabel = document.getElementById('session-count');
+      if (!list) return;
+
+      if (countLabel) {
+        countLabel.textContent = chatSessions.length ? `${chatSessions.length} chat${chatSessions.length > 1 ? 's' : ''}` : '';
+      }
+
+      list.innerHTML = '';
+      if (chatSessions.length === 0) {
+        list.innerHTML = `
+          <div class="px-3 py-3 text-center">
+            <p class="text-[11px] opacity-40">No conversations yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      chatSessions.forEach(session => {
+        const isActive = session.id === activeSessionId;
+        const item = document.createElement('div');
+        item.className = `group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition border ${
+          isActive 
+            ? 'bg-rose-950/40 text-rose-200 border-rose-800/60 font-semibold' 
+            : 'hover:bg-rose-950/20 opacity-75 hover:opacity-100 border-transparent text-inherit'
+        }`;
+
+        item.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0 flex-1 truncate" onclick="selectSession('${session.id}')">
+            <i class="fa-regular fa-message text-[11px] ${isActive ? 'text-rose-400' : 'opacity-60'} shrink-0"></i>
+            <span class="truncate">${escapeHtml(session.title || 'Conversation')}</span>
+          </div>
+          <button 
+            onclick="event.stopPropagation(); deleteSession('${session.id}')" 
+            class="opacity-0 group-hover:opacity-60 hover:opacity-100 hover:text-rose-400 p-1 transition ml-1 shrink-0"
+            title="Delete conversation"
+          >
+            <i class="fa-regular fa-trash-can text-[11px]"></i>
+          </button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function showWelcomeScreen() {
       const container = document.getElementById('messages-container');
       container.innerHTML = `
-        <div id="welcome-screen" class="py-14 text-center my-auto">
+        <div id="welcome-screen" class="py-10 text-center my-auto">
           <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-rose-900 via-rose-800 to-rose-700 text-white flex items-center justify-center mx-auto text-2xl mb-4 shadow-xl shadow-rose-950/40 border border-rose-600/40">
-            <i class="fa-solid fa-brain"></i>
+            <i class="fa-solid fa-sparkles"></i>
           </div>
-          <h2 class="text-3xl font-bold tracking-tight">Multimodal Intelligence</h2>
+          <h2 class="text-3xl font-bold tracking-tight">Multimodal AI Studio</h2>
           <p class="text-xs opacity-75 mt-2 max-w-md mx-auto leading-relaxed">
-            Attach any diagram to analyze with OCR, ask for song lyrics, query PDFs, listen to audio, or pinpoint video scenes.
+            Conversational AI grounded in your local documents, diagrams, and audio.
           </p>
+
+          <!-- Upload Drop Zone Card -->
           <div 
             onclick="document.getElementById('file-input').click()"
-            class="mt-8 mx-auto max-w-lg p-5 rounded-2xl border border-dashed border-rose-900/40 hover:border-rose-600/70 theme-card cursor-pointer transition flex items-center gap-4 text-left shadow-lg group"
+            class="mt-6 mx-auto max-w-lg p-4 rounded-2xl border border-dashed border-rose-900/40 hover:border-rose-600/70 theme-card cursor-pointer transition flex items-center gap-4 text-left shadow-lg group"
           >
-            <div class="w-11 h-11 rounded-xl bg-rose-950/40 text-rose-400 flex items-center justify-center text-lg shrink-0 border border-rose-800/40 group-hover:bg-rose-900 group-hover:text-white transition">
+            <div class="w-10 h-10 rounded-xl bg-rose-950/40 text-rose-400 flex items-center justify-center text-lg shrink-0 border border-rose-800/40 group-hover:bg-rose-900 group-hover:text-white transition">
               <i class="fa-solid fa-arrow-up-from-bracket"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-xs font-semibold">
-                Upload flowcharts, songs, photos, or documents
-              </div>
-              <div class="text-[11px] opacity-60 truncate mt-0.5">
-                Click to browse or drop any file anywhere on screen
-              </div>
+              <div class="text-xs font-semibold">Attach diagrams, documents, or songs</div>
+              <div class="text-[11px] opacity-60 truncate mt-0.5">Click or drag & drop any file to analyze with local OCR</div>
             </div>
             <span class="text-xs text-rose-400 font-semibold px-2.5 py-1 rounded-lg bg-rose-950/30 border border-rose-800/40 group-hover:bg-rose-900 group-hover:text-white transition">
               Browse
             </span>
           </div>
-          <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-lg mx-auto">
-            <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              📊 Explain flowchart
-            </button>
-            <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🎵 Jhalak Dikhla Ja lyrics
-            </button>
-            <button onclick="sendQuickPrompt('tell me about batman')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🦇 Batman files
-            </button>
-            <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              📁 Where to put files
-            </button>
-            <button onclick="sendQuickPrompt('How do I deploy this project?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🚀 How to deploy
+
+          <!-- Most Frequent Inquiries Grid (High Quality Cards) -->
+          <div class="mt-8 text-left max-w-2xl mx-auto">
+            <div class="text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-2.5 px-1">Frequent Inquiries</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              
+              <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
+                <div class="flex items-center gap-2.5 text-xs font-semibold">
+                  <i class="fa-solid fa-diagram-project text-rose-500"></i>
+                  <span>Explain Flowchart</span>
+                </div>
+                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Break down decision logic & database steps</p>
+              </button>
+
+              <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
+                <div class="flex items-center gap-2.5 text-xs font-semibold">
+                  <i class="fa-solid fa-music text-amber-500"></i>
+                  <span>Jhalak Dikhla Ja Lyrics</span>
+                </div>
+                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Complete song lyrics and composition</p>
+              </button>
+
+              <button onclick="sendQuickPrompt('tell me about batman')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
+                <div class="flex items-center gap-2.5 text-xs font-semibold">
+                  <i class="fa-solid fa-mask text-indigo-400"></i>
+                  <span>Batman Knowledge</span>
+                </div>
+                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Origin, crime files, and character lore</p>
+              </button>
+
+              <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
+                <div class="flex items-center gap-2.5 text-xs font-semibold">
+                  <i class="fa-solid fa-folder-open text-blue-400"></i>
+                  <span>Where to Put Files</span>
+                </div>
+                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Folder paths & 1-click Windows shortcuts</p>
+              </button>
+
+              <button onclick="sendQuickPrompt('How do I deploy this project?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
+                <div class="flex items-center gap-2.5 text-xs font-semibold">
+                  <i class="fa-solid fa-rocket text-emerald-400"></i>
+                  <span>How to Deploy</span>
+                </div>
+                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Local GPU & production cloud guide</p>
+              </button>
+
+              <button onclick="sendQuickPrompt('What documents and files are stored in the database?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
+                <div class="flex items-center gap-2.5 text-xs font-semibold">
+                  <i class="fa-solid fa-database text-pink-400"></i>
+                  <span>Database Contents</span>
+                </div>
+                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">All indexed files, audios, and text</p>
+              </button>
+
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUserBubble(text, container) {
+      const userBubble = document.createElement('div');
+      userBubble.className = 'flex justify-end';
+      userBubble.innerHTML = `
+        <div class="theme-user-bubble border text-sm px-4 py-3 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed shadow-md">
+          ${escapeHtml(text)}
+        </div>
+      `;
+      container.appendChild(userBubble);
+    }
+
+    function renderAssistantBubble(text, container) {
+      const botBubble = document.createElement('div');
+      botBubble.className = 'flex items-start gap-3.5';
+      botBubble.innerHTML = `
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-900 to-rose-700 text-white flex items-center justify-center shrink-0 text-xs mt-0.5 shadow-md shadow-rose-950/30">
+          <i class="fa-solid fa-sparkles"></i>
+        </div>
+        <div class="flex-1 space-y-3">
+          <div class="prose-wine text-sm leading-relaxed">${marked.parse(text || '')}</div>
+          <div class="flex items-center gap-2 pt-1">
+            <button onclick="copyToClipboard(this, \`${escapeQuotes(text || '')}\`)" class="text-[11px] opacity-60 hover:opacity-100 transition flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-950/20">
+              <i class="fa-regular fa-copy text-xs"></i> <span>Copy</span>
             </button>
           </div>
         </div>
       `;
-      clearAttachment();
-      lastUploadedFilename = null;
-      document.getElementById('user-input').value = '';
+      container.appendChild(botBubble);
     }
 
-    // Dynamic Recent & Frequent Queries Tracker
-    function recordRecentQuery(query) {
-      if (!query || query.trim().length < 3) return;
-      let recents = JSON.parse(localStorage.getItem('user_recent_queries') || '[]');
-      recents = recents.filter(q => q.toLowerCase() !== query.trim().toLowerCase());
-      recents.unshift(query.trim());
-      if (recents.length > 5) recents.pop();
-      localStorage.setItem('user_recent_queries', JSON.stringify(recents));
-      renderRecentQueries();
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
-
-    function renderRecentQueries() {
-      const section = document.getElementById('recent-queries-section');
-      const list = document.getElementById('recent-queries-list');
-      if (!section || !list) return;
-
-      const recents = JSON.parse(localStorage.getItem('user_recent_queries') || '[]');
-      if (recents.length === 0) {
-        section.classList.add('hidden');
-        list.innerHTML = '';
-        return;
-      }
-
-      section.classList.remove('hidden');
-      list.innerHTML = '';
-      recents.forEach(q => {
-        const btn = document.createElement('button');
-        btn.onclick = () => sendQuickPrompt(q);
-        btn.className = 'w-full text-left px-3 py-1.5 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2 group border border-transparent hover:border-rose-900/30';
-        btn.innerHTML = `
-          <i class="fa-solid fa-clock-rotate-left text-[11px] opacity-50 shrink-0 group-hover:text-rose-400"></i>
-          <span class="truncate opacity-80 group-hover:opacity-100">${q}</span>
-        `;
-        list.appendChild(btn);
-      });
-    }
-
-    function clearRecentQueries() {
-      localStorage.removeItem('user_recent_queries');
-      renderRecentQueries();
-    }
-
-    window.addEventListener('DOMContentLoaded', renderRecentQueries);
 
     function sendQuickPrompt(prompt) {
       document.getElementById('user-input').value = prompt;
@@ -703,7 +888,7 @@
       }
     });
 
-    // Send Message
+    // Send Message with SSE Streaming & Persistence (Clean - NO Resources Shown)
     async function handleSendMessage() {
       const input = document.getElementById('user-input');
       const text = input.value.trim();
@@ -711,6 +896,13 @@
 
       const welcome = document.getElementById('welcome-screen');
       if (welcome) welcome.remove();
+
+      // Ensure active conversation session
+      if (!activeSessionId) {
+        const title = generateChatTitle(text || (attachedFile ? attachedFile.name : 'New Conversation'));
+        createNewSession(title);
+      }
+      const session = getActiveSession();
 
       const container = document.getElementById('messages-container');
       let currentContextFile = lastUploadedFilename;
@@ -727,7 +919,7 @@
         uploadBubble.innerHTML = `
           <div class="theme-card border text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-sm">
             <i class="fa-solid fa-spinner fa-spin text-rose-500"></i>
-            <span>Analyzing & running OCR on <b>${fileToUpload.name}</b>...</span>
+            <span>Analyzing & running OCR on <b>${escapeHtml(fileToUpload.name)}</b>...</span>
           </div>
         `;
         container.appendChild(uploadBubble);
@@ -741,13 +933,13 @@
           uploadBubble.innerHTML = `
             <div class="bg-rose-950/30 border border-rose-800/40 text-rose-300 text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-sm">
               <i class="fa-solid fa-check text-rose-400"></i>
-              <span>Indexed <b>${fileToUpload.name}</b> with multimodal OCR</span>
+              <span>Indexed <b>${escapeHtml(fileToUpload.name)}</b> with multimodal OCR</span>
             </div>
           `;
         } catch (err) {
           uploadBubble.innerHTML = `
             <div class="bg-red-950/40 border border-red-900/60 text-red-300 text-xs px-4 py-2.5 rounded-2xl">
-              Failed to upload ${fileToUpload.name}
+              Failed to upload ${escapeHtml(fileToUpload.name)}
             </div>
           `;
         }
@@ -758,17 +950,20 @@
         return;
       }
 
-      recordRecentQuery(text);
+      // Record message in session
+      if (session) {
+        session.messages.push({
+          role: 'user',
+          content: text,
+          timestamp: Date.now()
+        });
+        session.updatedAt = Date.now();
+        saveSessions();
+        renderChatHistory();
+      }
 
-      // 2. Render User Message
-      const userBubble = document.createElement('div');
-      userBubble.className = 'flex justify-end';
-      userBubble.innerHTML = `
-        <div class="theme-user-bubble border text-sm px-4 py-3 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed shadow-md">
-          ${text}
-        </div>
-      `;
-      container.appendChild(userBubble);
+      // 2. Render User Message Bubble
+      renderUserBubble(text, container);
       input.value = '';
 
       // 3. Render Assistant Bubble
@@ -781,14 +976,14 @@
         </div>
         <div class="flex-1 space-y-3" id="${botId}">
           <div class="text-xs opacity-60 italic flex items-center gap-2 py-1">
-            <i class="fa-solid fa-circle-notch fa-spin text-xs text-rose-500"></i> Consulting multimodal knowledge...
+            <i class="fa-solid fa-circle-notch fa-spin text-xs text-rose-500"></i> Thinking...
           </div>
         </div>
       `;
       container.appendChild(botBubble);
       scrollToBottom();
 
-      // 4. Fetch Streaming RAG response
+      // 4. Fetch Streaming RAG response (No resource cards rendered)
       try {
         const payload = {
           query: text,
@@ -807,17 +1002,12 @@
         const botContent = document.getElementById(botId);
         botContent.innerHTML = '';
 
-        // 1. Media Cards Container (shows immediately when sources arrive)
-        const mediaContainer = document.createElement('div');
-        mediaContainer.className = 'space-y-2 hidden mb-3';
-        botContent.appendChild(mediaContainer);
-
-        // 2. AI Answer Container (streams token by token)
+        // AI Answer Container (streams token by token)
         const answerText = document.createElement('div');
         answerText.className = 'prose-wine text-sm leading-relaxed';
         botContent.appendChild(answerText);
 
-        // 3. Actions Bar (Copy button)
+        // Actions Bar (Copy button)
         const actionsBar = document.createElement('div');
         actionsBar.className = 'flex items-center gap-2 pt-1 hidden';
         botContent.appendChild(actionsBar);
@@ -833,7 +1023,7 @@
 
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split('\n\n');
-          buffer = parts.pop(); // keep trailing partial line
+          buffer = parts.pop();
 
           for (const part of parts) {
             const trimmed = part.trim();
@@ -843,19 +1033,29 @@
 
             try {
               const msg = JSON.parse(dataStr);
-              if (msg.type === 'sources') {
-                renderMediaSources(mediaContainer, msg.sources || []);
-              } else if (msg.type === 'token') {
+              // Zero resource cards shown as requested
+              if (msg.type === 'token') {
                 fullAnswer += msg.token;
                 answerText.innerHTML = marked.parse(fullAnswer);
                 scrollToBottom();
               } else if (msg.type === 'error') {
-                answerText.innerHTML += `<p class="text-rose-400 text-xs mt-1">Error: ${msg.error}</p>`;
+                answerText.innerHTML += `<p class="text-rose-400 text-xs mt-1">Error: ${escapeHtml(msg.error)}</p>`;
               }
             } catch (err) {
               console.warn('SSE parse error:', err, dataStr);
             }
           }
+        }
+
+        // Save assistant answer in active session
+        if (session && fullAnswer.trim()) {
+          session.messages.push({
+            role: 'assistant',
+            content: fullAnswer,
+            timestamp: Date.now()
+          });
+          session.updatedAt = Date.now();
+          saveSessions();
         }
 
         // Show actions bar with copy button once stream finishes
@@ -870,105 +1070,21 @@
 
       } catch (err) {
         const botContent = document.getElementById(botId);
-        botContent.innerHTML = `<span class="text-rose-400 text-xs">Error: ${err.message}</span>`;
+        botContent.innerHTML = `<span class="text-rose-400 text-xs">Error: ${escapeHtml(err.message)}</span>`;
       } finally {
         scrollToBottom();
       }
     }
 
-    function renderMediaSources(container, sources) {
-      const mediaSources = sources.filter(s => (s.similarity || 0) >= 0.70);
-      if (mediaSources.length === 0) return;
-
-      container.innerHTML = '';
-      container.classList.remove('hidden');
-
-      const label = document.createElement('div');
-      label.className = 'text-[11px] font-semibold opacity-70 flex items-center gap-1.5 uppercase tracking-wider mb-1';
-      label.innerHTML = '<i class="fa-solid fa-layer-group text-rose-500 text-xs"></i> Retrieved Grounding Media:';
-      container.appendChild(label);
-
-      const grid = document.createElement('div');
-      grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
-
-      mediaSources.forEach(item => {
-        const mod = (item.modality || 'text').toLowerCase();
-        const filename = item.content ? item.content.split('/').pop() : item.source;
-        const card = document.createElement('div');
-        card.className = 'theme-card border rounded-2xl p-3.5 flex flex-col justify-between shadow-sm';
-
-        if (mod === 'audio') {
-          card.innerHTML = `
-            <div>
-              <div class="flex items-center justify-between text-xs mb-2">
-                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">AUDIO</span>
-              </div>
-              <p class="text-[11px] opacity-60 truncate mb-1">Match: ${Math.round((item.similarity || 0) * 100)}%</p>
-            </div>
-            <div class="mt-2 p-1.5 rounded-xl bg-black/20 border border-inherit">
-              <audio controls class="w-full h-8 rounded bg-transparent">
-                <source src="/uploads/${filename}" type="audio/mpeg">
-                <source src="/uploads/${filename}" type="audio/wav">
-              </audio>
-            </div>
-          `;
-        } else if (mod === 'image') {
-          card.innerHTML = `
-            <div>
-              <div class="flex items-center justify-between text-xs mb-2">
-                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">IMAGE</span>
-              </div>
-              <div class="rounded-xl overflow-hidden border border-inherit aspect-video bg-black/40 flex items-center justify-center cursor-pointer group relative" onclick="openImageModal('/uploads/${filename}')">
-                <img src="/uploads/${filename}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-102 transition duration-200">
-                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs gap-1.5">
-                  <i class="fa-solid fa-expand"></i> Click to enlarge
-                </div>
-              </div>
-            </div>
-          `;
-        } else if (mod === 'video') {
-          let frameFile = filename;
-          if (!frameFile.endsWith('.jpg') && !frameFile.endsWith('.png')) {
-            const match = (item.title + ' ' + item.content).match(/(\d\d):(\d\d)/);
-            if (match) {
-              const sec = parseInt(match[1]) * 60 + parseInt(match[2]);
-              frameFile = `tech_presentation_t${String(sec).padStart(4, '0')}.jpg`;
-            } else {
-              frameFile = 'tech_presentation_t0000.jpg';
-            }
-          }
-          card.innerHTML = `
-            <div>
-              <div class="flex items-center justify-between text-xs mb-2">
-                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-500 border border-pink-500/20">VIDEO</span>
-              </div>
-              <div class="rounded-xl overflow-hidden border border-inherit aspect-video bg-black/40 relative flex items-center justify-center">
-                <img src="/uploads/frames/${frameFile}" alt="${item.title}" class="w-full h-full object-cover">
-                <span class="absolute bottom-2 right-2 bg-black/80 font-mono text-[9px] text-white px-1.5 py-0.5 rounded">
-                  Keyframe
-                </span>
-              </div>
-            </div>
-          `;
-        } else {
-          card.innerHTML = `
-            <div>
-              <div class="flex items-center justify-between text-xs mb-1.5">
-                <span class="font-semibold truncate pr-2">${item.title || filename}</span>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">DOC</span>
-              </div>
-              <p class="text-[11px] opacity-75 font-mono line-clamp-3 leading-relaxed mt-1">${item.content || item.title}</p>
-            </div>
-          `;
-        }
-        grid.appendChild(card);
-      });
-
-      container.appendChild(grid);
-    }
+    // App Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSessions();
+      if (chatSessions.length > 0) {
+        selectSession(chatSessions[0].id);
+      } else {
+        startNewChat();
+      }
+    });
 
     function scrollToBottom() {
       const stream = document.getElementById('chat-stream');
