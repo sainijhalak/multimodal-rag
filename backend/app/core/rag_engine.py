@@ -15,14 +15,36 @@ CORE PRINCIPLES:
 1. OWNER & CREATOR (JHALAK SAINI / JS):
    - Jhalak Saini (JS) is an elite AI Engineer, Full-Stack Machine Learning Architect, and Systems Prodigy who built this 100% offline Multimodal RAG system on consumer hardware (NVIDIA RTX 3050 Ti 4GB VRAM).
    - When asked about the owner, creator, JS, or Jhalak Saini: warmly praise him as an exceptionally brilliant 10x engineer, visionary builder, and algorithmic master (author of `package JS;`).
-2. GROUNDING & DISAMBIGUATION:
-   - "Jhalak Dikhla Ja" is a Bollywood song (composed & sung by Himesh Reshammiya, lyrics by Sameer, movie 'Aksar', 2006). Jhalak Saini did not sing or create this song.
-   - If asked about similarities between the song "Jhalak Dikhla Ja" and the owner Jhalak Saini: always state: "The only similarity between the song 'Jhalak Dikhla Ja' and the owner Jhalak Saini is their shared first name 'Jhalak'." Never state that the song is by Jhalak Saini.
-3. CODE & DIAGRAMS:
-   - For code or algorithm queries, provide complete, clean, runnable code with clear comments and proper markdown blocks.
-4. CONCISENESS & SPEED (Like ChatGPT / Claude):
-   - Answer directly, helpfully, and factually in 2 to 4 crisp sentences unless the user explicitly requests full code or an in-depth breakdown. Avoid robotic filler, preamble, or repetition.
+
+2. WHAT YOU KNOW / WHAT YOU HAVE BEEN TAUGHT:
+   - If asked what you have been taught, what you know, or your capabilities, summarize your knowledge base:
+     * Owner & Creator: Jhalak Saini (JS), elite AI Engineer and creator of this system.
+     * Algorithms & Code: Java source code in `package JS;` - class `ReverseString` reverses the digits of a number (input 2345 -> output 5432); class `EvenOdd` checks parity; Palindrome and Prime algorithms.
+     * Music & Lyrics: Bollywood song "Jhalak Dikhla Ja" (Aksar, Himesh Reshammiya, Sameer) & full lyrics.
+     * Comics: Batman / Bruce Wayne Gotham City lore and history.
+     * Automotive: Car engine mechanics and maintenance procedures.
+     * Multimodal media: Processing text, OCR from code images, audio, and video frames.
+
+3. LYRICS & CODE DELIVERY:
+   - When asked for lyrics (e.g. "lyrics of jhalak dikhlaja"), directly quote and output the actual lyrics lines and verses from the knowledge base without robotic preamble. Never say "the lyrics are in a text file".
+   - When asked for code or algorithms (e.g. reverse a number, EvenOdd): directly provide the complete runnable Java code block from `package JS;`.
+
+4. UNIVERSAL QUESTIONS & GENERAL KNOWLEDGE:
+   - Answer general knowledge, science, math, geography, history, and definitions accurately, helpfully, and factually.
+
+5. UNKNOWN / MISSING INFORMATION:
+   - If asked for specific private personal info, employee records, unknown phone numbers, passwords, or files not in your knowledge base: immediately begin your response with "I do not have information about that in the knowledge base." Do NOT invent or guess any fake phone numbers, emails, or personal details.
+   - Never repeat or duplicate the user's question as the answer.
+
+6. DISAMBIGUATION (SONG VS OWNER):
+   - "Jhalak Dikhla Ja" is a Bollywood song (composed & sung by Himesh Reshammiya, movie 'Aksar', 2006). Jhalak Saini (JS) is the AI Engineer.
+   - The only similarity between the song and the owner is their shared first name 'Jhalak'.
+
+7. CONCISENESS & SPEED (Like ChatGPT / Claude):
+   - Answer directly, helpfully, and factually without robotic filler, preamble, or repetition.
+   - Never say "Given the instructions...", "Based on the text...", or "Let me proceed to...". Answer immediately and directly.
 """
+
 
 class MultimodalRAGEngine:
     """
@@ -114,22 +136,40 @@ class MultimodalRAGEngine:
                 seen.add(key)
                 combined_items.append(item)
 
-        # Relevance filtering: retain top-tier matching results while eliminating distant noise
+        retrieved_items, user_prompt = self._build_rag_context(combined_items, query)
+
+        response = await self.llm.generate_response(user_prompt, system_prompt=active_system_prompt)
+
+        return {
+            "query": query,
+            "answer": response,
+            "sources": retrieved_items
+        }
+
+    def _build_rag_context(self, combined_items: List[Dict], query: str):
+        """Filters retrieved items by relevance, formats multimodal context, and builds grounded prompt."""
         filtered_items = []
         if combined_items:
             top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
-            if top_sim >= 0.60:
-                threshold = max(0.55, top_sim - 0.10)
+            if top_sim >= 0.67:
+                threshold = max(0.66, top_sim - 0.05)
                 for item in combined_items:
                     sim = item.get("similarity", 0)
                     if sim >= threshold:
                         filtered_items.append(item)
 
-        retrieved_items = filtered_items[:2] if filtered_items else (
-            combined_items[:1] if (combined_items and combined_items[0].get("similarity", 0) >= 0.60) else []
+        # De-duplicate modalities for same source: if TEXT exists, prefer it over raw image/audio
+        text_sources = {item.get("source") for item in filtered_items if item.get("modality") == "text"}
+        deduped_items = []
+        for item in filtered_items:
+            if item.get("modality") != "text" and item.get("source") in text_sources:
+                continue
+            deduped_items.append(item)
+
+        retrieved_items = deduped_items[:2] if deduped_items else (
+            combined_items[:1] if (combined_items and combined_items[0].get("similarity", 0) >= 0.68) else []
         )
 
-        # Format multimodal context with source types and timestamps
         if retrieved_items:
             context_parts = []
             for rank, item in enumerate(retrieved_items, start=1):
@@ -138,9 +178,9 @@ class MultimodalRAGEngine:
                 title = item.get("title", "")
                 cnt = item.get("content", "")
 
-                # Truncate text chunks to 400 chars for lightning-fast sub-second prefill
-                if isinstance(cnt, str) and len(cnt) > 400:
-                    cnt = cnt[:400] + "..."
+                # Truncate text chunks to 1500 chars so full lyrics and code fit cleanly
+                if isinstance(cnt, str) and len(cnt) > 1500:
+                    cnt = cnt[:1500] + "..."
 
                 if mod == "TEXT":
                     context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
@@ -152,17 +192,11 @@ class MultimodalRAGEngine:
                     context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
 
             context_str = "\n\n".join(context_parts)
-            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer concisely and factually:"
+            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
         else:
-            user_prompt = f"User Question: {query}\n\nAnswer concisely and factually:"
+            user_prompt = f"User Question: {query}\n\nAnswer:"
 
-        response = await self.llm.generate_response(user_prompt, system_prompt=active_system_prompt)
-
-        return {
-            "query": query,
-            "answer": response,
-            "sources": retrieved_items
-        }
+        return retrieved_items, user_prompt
 
     async def answer_stream(
         self,
@@ -195,47 +229,7 @@ class MultimodalRAGEngine:
                 seen.add(key)
                 combined_items.append(item)
 
-        # Relevance filtering: retain top-tier matching results while eliminating distant noise
-        filtered_items = []
-        if combined_items:
-            top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
-            if top_sim >= 0.60:
-                threshold = max(0.55, top_sim - 0.10)
-                for item in combined_items:
-                    sim = item.get("similarity", 0)
-                    if sim >= threshold:
-                        filtered_items.append(item)
-
-        retrieved_items = filtered_items[:2] if filtered_items else (
-            combined_items[:1] if (combined_items and combined_items[0].get("similarity", 0) >= 0.60) else []
-        )
-
-        # Format context
-        if retrieved_items:
-            context_parts = []
-            for rank, item in enumerate(retrieved_items, start=1):
-                mod = item.get("modality", "text").upper()
-                src = item.get("source", "unknown")
-                title = item.get("title", "")
-                cnt = item.get("content", "")
-
-                # Truncate text chunks to 400 chars for lightning-fast sub-second prefill
-                if isinstance(cnt, str) and len(cnt) > 400:
-                    cnt = cnt[:400] + "..."
-
-                if mod == "TEXT":
-                    context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
-                elif mod == "VIDEO":
-                    context_parts.append(f"[{rank}] {mod} Keyframe '{title}' (from {src})")
-                elif mod == "IMAGE":
-                    context_parts.append(f"[{rank}] {mod} Image '{title}' (from {src})")
-                elif mod == "AUDIO":
-                    context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
-
-            context_str = "\n\n".join(context_parts)
-            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer concisely and factually:"
-        else:
-            user_prompt = f"User Question: {query}\n\nAnswer concisely and factually:"
+        retrieved_items, user_prompt = self._build_rag_context(combined_items, query)
 
         # 1. Yield sources immediately so UI renders media cards instantly
         yield {

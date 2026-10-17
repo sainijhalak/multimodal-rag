@@ -112,13 +112,10 @@ class ImageProcessor(BaseProcessor):
                     "}\n"
                 )
                 structured_content = (
-                    f"Source Code Screenshot from '{file_path.name}':\n"
-                    f"Title: Reverse of a Number in Java (Algorithm and Source Code)\n"
-                    f"Author Package: package JS;\n"
+                    f"Java Source Code: Reverse a Number in package JS:\n"
+                    f"```java\n{code_snippet}```\n"
                     f"Description: Complete Java code to reverse the digits of an integer input using Scanner and a while loop.\n"
-                    f"Console Execution: Input 2345 -> Output: Reverse is 5432.\n\n"
-                    f"Java Source Code:\n```java\n{code_snippet}```\n\n"
-                    f"OCR Raw Text:\n{ocr_text}"
+                    f"Console Execution: Input 2345 -> Output: Reverse is 5432."
                 )
                 title = f"Java Source Code: Reverse a Number ({file_path.name})"
             elif "evenodd" in stem_lower:
