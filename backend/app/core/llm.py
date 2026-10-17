@@ -38,7 +38,12 @@ class LocalLLM:
             self.model = self.model.to("cpu")
         logger.info("Local LLM successfully initialized.")
 
-    async def generate_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    async def generate_response(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        max_new_tokens: int = 512
+    ) -> str:
         """Generates a complete response synchronously in a background thread."""
         def _sync_generate():
             self._load_model()
@@ -57,7 +62,7 @@ class LocalLLM:
             with torch.no_grad():
                 generated_ids = self.model.generate(
                     **model_inputs,
-                    max_new_tokens=220,
+                    max_new_tokens=max_new_tokens,
                     temperature=0.3,
                     repetition_penalty=1.1,
                     do_sample=True,
@@ -73,7 +78,12 @@ class LocalLLM:
 
         return await asyncio.to_thread(_sync_generate)
 
-    async def stream_response(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def stream_response(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        max_new_tokens: int = 512
+    ) -> AsyncGenerator[str, None]:
         """Streams generated tokens in real-time using TextIteratorStreamer."""
         self._load_model()
         messages = []
@@ -92,7 +102,7 @@ class LocalLLM:
         generation_kwargs = dict(
             **model_inputs,
             streamer=streamer,
-            max_new_tokens=220,
+            max_new_tokens=max_new_tokens,
             temperature=0.3,
             repetition_penalty=1.1,
             do_sample=True,

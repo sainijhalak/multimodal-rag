@@ -11,6 +11,7 @@ class QueryRequest(BaseModel):
     top_k: Optional[int] = 5
     modality: Optional[str] = None  # None for all, or "text", "image", "audio", "video"
     context_file: Optional[str] = None  # Optional filename of attached/active file
+    system_prompt: Optional[str] = None  # Optional custom system prompt override
 
 @router.post("/search")
 async def similarity_search(req: QueryRequest):
@@ -25,7 +26,12 @@ async def similarity_search(req: QueryRequest):
 async def rag_ask(req: QueryRequest):
     """Full Multimodal RAG: cross-modal retrieval + local Qwen2.5 conversational answer generation."""
     try:
-        result = await engine.answer(req.query, top_k=req.top_k, context_file=req.context_file)
+        result = await engine.answer(
+            req.query,
+            top_k=req.top_k,
+            context_file=req.context_file,
+            system_prompt=req.system_prompt
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -38,7 +44,12 @@ async def rag_ask_stream(req: QueryRequest):
 
     async def event_generator():
         try:
-            async for chunk in engine.answer_stream(req.query, top_k=req.top_k, context_file=req.context_file):
+            async for chunk in engine.answer_stream(
+                req.query,
+                top_k=req.top_k,
+                context_file=req.context_file,
+                system_prompt=req.system_prompt
+            ):
                 yield f"data: {json.dumps(chunk)}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
