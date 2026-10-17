@@ -42,7 +42,7 @@ class LocalLLM:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        max_new_tokens: int = 512
+        max_new_tokens: int = 256
     ) -> str:
         """Generates a complete response synchronously in a background thread."""
         def _sync_generate():
@@ -63,8 +63,8 @@ class LocalLLM:
                 generated_ids = self.model.generate(
                     **model_inputs,
                     max_new_tokens=max_new_tokens,
-                    temperature=0.3,
-                    repetition_penalty=1.1,
+                    temperature=0.2,
+                    repetition_penalty=1.08,
                     do_sample=True,
                     top_p=0.9,
                     pad_token_id=self.tokenizer.eos_token_id,
@@ -82,9 +82,10 @@ class LocalLLM:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        max_new_tokens: int = 512
+        max_new_tokens: int = 256
     ) -> AsyncGenerator[str, None]:
-        """Streams generated tokens in real-time using TextIteratorStreamer."""
+        """Streams generated tokens in real-time non-blocking using TextIteratorStreamer."""
+        import queue
         self._load_model()
         messages = []
         if system_prompt:
@@ -103,8 +104,8 @@ class LocalLLM:
             **model_inputs,
             streamer=streamer,
             max_new_tokens=max_new_tokens,
-            temperature=0.3,
-            repetition_penalty=1.1,
+            temperature=0.2,
+            repetition_penalty=1.08,
             do_sample=True,
             top_p=0.9,
             pad_token_id=self.tokenizer.eos_token_id,
@@ -114,9 +115,22 @@ class LocalLLM:
         thread = threading.Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
 
-        for chunk in streamer:
-            if chunk:
-                yield chunk
-                await asyncio.sleep(0.002)
+        # Non-blocking async queue polling to keep the event loop and SSE response fluid
+        while True:
+            try:
+                token = streamer.text_queue.get_nowait()
+                if token == streamer.stop_signal:
+                    break
+                if token:
+                    yield token
+            except queue.Empty:
+                if not thread.is_alive():
+                    # Drain any remaining tokens in queue after thread exits
+                    while not streamer.text_queue.empty():
+                        tok = streamer.text_queue.get_nowait()
+                        if tok != streamer.stop_signal and tok:
+                            yield tok
+                    break
+                await asyncio.sleep(0.005)
 
         thread.join()

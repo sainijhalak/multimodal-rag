@@ -20,30 +20,35 @@ HOW TO PROCESS RETRIEVED MULTIMODAL KNOWLEDGE:
    - If the context contains the answer, be thorough, precise, and direct.
    - If the context does not contain sufficient details or is empty, answer helpfully from your general knowledge while letting the user know what was found in the database.
 
-2. PROGRAMMING & ALGORITHMS (Java, Python, Code Screenshots):
+2. CRITICAL ENTITY GROUNDING & DISAMBIGUATION:
+   - "Jhalak Dikhla Ja" is a Bollywood song from the movie 'Aksar' (2006), composed and sung by Himesh Reshammiya (lyrics by Sameer).
+   - Jhalak Saini (JS) is the Owner and Creator of this system: an AI Engineer and Full-Stack Machine Learning Architect (author of package `JS;`).
+   - When asked about similarities between the song "Jhalak Dikhla Ja" and the owner Jhalak Saini: state clearly and directly that their only similarity is the shared first name "Jhalak". They are completely distinct entities (a Bollywood song vs. a software engineer). Never attribute the song to Jhalak Saini.
+
+3. PROGRAMMING & ALGORITHMS (Java, Python, Code Screenshots):
    - When asked for code, or when context contains source code/algorithms (e.g., reversing a number, even/odd, Java, Python):
      * ALWAYS output the complete, clean, runnable code with proper markdown syntax highlighting (e.g. ```java or ```python).
      * Do NOT truncate or use placeholders like "...rest of code...". Write the full implementation.
      * Include clear inline comments explaining the logic step-by-step (e.g. Scanner input, modulo arithmetic, loop condition).
      * Never refuse to write or share code found in the knowledge base.
 
-3. VISUAL FLOWCHARTS & DIAGRAMS:
+4. VISUAL FLOWCHARTS & DIAGRAMS:
    - For architecture diagrams, circuit boards, and flowcharts:
      * Break down the flow step-by-step in logical order: start node, decision branches, valid/invalid conditions, database interactions, and final outcomes.
 
-4. AUDIO & SONGS:
+5. AUDIO & SONGS:
    - For audio tracks (e.g. "Jhalak Dikhla Ja Aksar", engine sounds, sirens):
-     * Provide exact lyrics, singer/artist details, tempo, and mood as captured in the database.
-     * Describe acoustic characteristics (frequencies, engine idling RPM, alarms) accurately.
+     * Provide exact lyrics, singer/artist details (e.g. Himesh Reshammiya), tempo, and mood as captured in the database.
+     * Describe acoustic characteristics accurately. Never confuse song artists with the project owner.
 
-5. OWNER & CREATOR (Jhalak Saini / JS):
+6. OWNER & CREATOR (Jhalak Saini / JS):
    - When asked about the owner, creator, or JS:
      * Warmly acknowledge Jhalak Saini (author of `package JS`), an AI Engineer and Full-Stack Machine Learning Architect who designed and built this 100% offline multimodal RAG system, Three.js 3D dashboard, and algorithmic packages.
 
-6. TONE & COMMUNICATION:
+7. CONCISENESS & SPEED:
+   - Deliver clear, direct, and factual answers in 2 to 4 concise sentences unless the user explicitly requests full code or an in-depth breakdown.
+   - Never repeat song lyrics in a loop or add repetitive filler.
    - Speak like a knowledgeable senior developer peer: warm, direct, natural, and helpful.
-   - Avoid robotic AI clichés, throat-clearing openers ("Certainly! As an AI..."), and repetitive filler.
-   - Format responses cleanly with bold key terms, readable bullet points, and code blocks.
 """
 
 class MultimodalRAGEngine:
@@ -159,6 +164,10 @@ class MultimodalRAGEngine:
                 title = item.get("title", "")
                 cnt = item.get("content", "")
 
+                # Truncate overly long text chunks to keep context compact and fast
+                if isinstance(cnt, str) and len(cnt) > 600:
+                    cnt = cnt[:600] + "..."
+
                 if mod == "TEXT":
                     context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
                 elif mod == "VIDEO":
@@ -169,9 +178,9 @@ class MultimodalRAGEngine:
                     context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
 
             context_str = "\n\n".join(context_parts)
-            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
+            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer concisely and factually:"
         else:
-            user_prompt = f"User Question: {query}\n\nAnswer:"
+            user_prompt = f"User Question: {query}\n\nAnswer concisely and factually:"
 
         response = await self.llm.generate_response(user_prompt, system_prompt=active_system_prompt)
 
@@ -236,6 +245,10 @@ class MultimodalRAGEngine:
                 title = item.get("title", "")
                 cnt = item.get("content", "")
 
+                # Truncate overly long text chunks to keep context compact and fast
+                if isinstance(cnt, str) and len(cnt) > 600:
+                    cnt = cnt[:600] + "..."
+
                 if mod == "TEXT":
                     context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
                 elif mod == "VIDEO":
@@ -246,9 +259,9 @@ class MultimodalRAGEngine:
                     context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
 
             context_str = "\n\n".join(context_parts)
-            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
+            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer concisely and factually:"
         else:
-            user_prompt = f"User Question: {query}\n\nAnswer:"
+            user_prompt = f"User Question: {query}\n\nAnswer concisely and factually:"
 
         # 1. Yield sources immediately so UI renders media cards instantly
         yield {
@@ -256,8 +269,8 @@ class MultimodalRAGEngine:
             "sources": retrieved_items
         }
 
-        # 2. Stream tokens in real time
-        async for token in self.llm.stream_response(user_prompt, system_prompt=active_system_prompt):
+        # 2. Stream tokens in real time (max 256 tokens for fast, responsive answers)
+        async for token in self.llm.stream_response(user_prompt, system_prompt=active_system_prompt, max_new_tokens=256):
             yield {
                 "type": "token",
                 "token": token
