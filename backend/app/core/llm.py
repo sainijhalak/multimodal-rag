@@ -38,21 +38,13 @@ class LocalLLM:
             self.model = self.model.to("cpu")
         logger.info("Local LLM successfully initialized.")
 
-    async def generate_response(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        max_new_tokens: int = 512
-    ) -> str:
+    async def generate_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """Generates a complete response synchronously in a background thread."""
-        from .prompts import DEFAULT_SYSTEM_PROMPT
-        active_system_prompt = system_prompt if system_prompt is not None else DEFAULT_SYSTEM_PROMPT
-
         def _sync_generate():
             self._load_model()
             messages = []
-            if active_system_prompt:
-                messages.append({"role": "system", "content": active_system_prompt})
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
             text_input = self.tokenizer.apply_chat_template(
@@ -65,7 +57,7 @@ class LocalLLM:
             with torch.no_grad():
                 generated_ids = self.model.generate(
                     **model_inputs,
-                    max_new_tokens=max_new_tokens,
+                    max_new_tokens=220,
                     temperature=0.3,
                     repetition_penalty=1.1,
                     do_sample=True,
@@ -81,20 +73,12 @@ class LocalLLM:
 
         return await asyncio.to_thread(_sync_generate)
 
-    async def stream_response(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        max_new_tokens: int = 512
-    ) -> AsyncGenerator[str, None]:
+    async def stream_response(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncGenerator[str, None]:
         """Streams generated tokens in real-time using TextIteratorStreamer."""
-        from .prompts import DEFAULT_SYSTEM_PROMPT
-        active_system_prompt = system_prompt if system_prompt is not None else DEFAULT_SYSTEM_PROMPT
-
         self._load_model()
         messages = []
-        if active_system_prompt:
-            messages.append({"role": "system", "content": active_system_prompt})
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
         text_input = self.tokenizer.apply_chat_template(
@@ -108,7 +92,7 @@ class LocalLLM:
         generation_kwargs = dict(
             **model_inputs,
             streamer=streamer,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=220,
             temperature=0.3,
             repetition_penalty=1.1,
             do_sample=True,
