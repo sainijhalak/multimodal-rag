@@ -65,6 +65,7 @@ class LocalLLM:
                     max_new_tokens=max_new_tokens,
                     temperature=0.2,
                     repetition_penalty=1.08,
+                    use_cache=True,
                     do_sample=True,
                     top_p=0.9,
                     pad_token_id=self.tokenizer.eos_token_id,
@@ -106,6 +107,7 @@ class LocalLLM:
             max_new_tokens=max_new_tokens,
             temperature=0.2,
             repetition_penalty=1.08,
+            use_cache=True,
             do_sample=True,
             top_p=0.9,
             pad_token_id=self.tokenizer.eos_token_id,
@@ -117,20 +119,26 @@ class LocalLLM:
 
         # Non-blocking async queue polling to keep the event loop and SSE response fluid
         while True:
-            try:
-                token = streamer.text_queue.get_nowait()
-                if token == streamer.stop_signal:
+            chunk = ""
+            while not streamer.text_queue.empty():
+                try:
+                    tok = streamer.text_queue.get_nowait()
+                    if tok == streamer.stop_signal:
+                        if chunk:
+                            yield chunk
+                        thread.join()
+                        return
+                    if tok:
+                        chunk += tok
+                except queue.Empty:
                     break
-                if token:
-                    yield token
-            except queue.Empty:
-                if not thread.is_alive():
-                    # Drain any remaining tokens in queue after thread exits
-                    while not streamer.text_queue.empty():
-                        tok = streamer.text_queue.get_nowait()
-                        if tok != streamer.stop_signal and tok:
-                            yield tok
-                    break
-                await asyncio.sleep(0.005)
+
+            if chunk:
+                yield chunk
+
+            if not thread.is_alive() and streamer.text_queue.empty():
+                break
+
+            await asyncio.sleep(0.003)
 
         thread.join()

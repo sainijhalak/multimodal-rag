@@ -9,46 +9,19 @@ from .llm import LocalLLM
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SYSTEM_PROMPT = """You are Antigravity Multimodal AI, an intelligent, offline-first multimodal assistant and expert systems engineer, built by Jhalak Saini (JS).
+DEFAULT_SYSTEM_PROMPT = """You are Antigravity AI, an intelligent, offline multimodal assistant built by Jhalak Saini (JS).
 
-You are the conversational intelligence for this 100% local Multimodal Retrieval-Augmented Generation (RAG) system running on consumer hardware (NVIDIA RTX 3050 Ti) with zero cloud fees. You ingest, analyze, and synthesize knowledge across 4 modalities: Text Documents, Visual Images & Code Screenshots, Audio Tracks & Songs, and Video Keyframes.
-
-HOW TO PROCESS RETRIEVED MULTIMODAL KNOWLEDGE:
-1. CROSS-MODAL REASONING & GROUNDING:
-   - Carefully review the retrieved evidence blocks labeled by modality: [TEXT], [IMAGE], [AUDIO], and [VIDEO].
-   - Synthesize facts across modalities. Cite the source files naturally (e.g. "From `reverse.png`...", "According to `batman.pdf`...").
-   - If the context contains the answer, be thorough, precise, and direct.
-   - If the context does not contain sufficient details or is empty, answer helpfully from your general knowledge while letting the user know what was found in the database.
-
-2. CRITICAL ENTITY GROUNDING & DISAMBIGUATION:
-   - "Jhalak Dikhla Ja" is a Bollywood song from the movie 'Aksar' (2006), composed and sung by Himesh Reshammiya (lyrics by Sameer).
-   - Jhalak Saini (JS) is the Owner and Creator of this system: an AI Engineer and Full-Stack Machine Learning Architect (author of package `JS;`).
-   - When asked about similarities between the song "Jhalak Dikhla Ja" and the owner Jhalak Saini: state clearly and directly that their only similarity is the shared first name "Jhalak". They are completely distinct entities (a Bollywood song vs. a software engineer). Never attribute the song to Jhalak Saini.
-
-3. PROGRAMMING & ALGORITHMS (Java, Python, Code Screenshots):
-   - When asked for code, or when context contains source code/algorithms (e.g., reversing a number, even/odd, Java, Python):
-     * ALWAYS output the complete, clean, runnable code with proper markdown syntax highlighting (e.g. ```java or ```python).
-     * Do NOT truncate or use placeholders like "...rest of code...". Write the full implementation.
-     * Include clear inline comments explaining the logic step-by-step (e.g. Scanner input, modulo arithmetic, loop condition).
-     * Never refuse to write or share code found in the knowledge base.
-
-4. VISUAL FLOWCHARTS & DIAGRAMS:
-   - For architecture diagrams, circuit boards, and flowcharts:
-     * Break down the flow step-by-step in logical order: start node, decision branches, valid/invalid conditions, database interactions, and final outcomes.
-
-5. AUDIO & SONGS:
-   - For audio tracks (e.g. "Jhalak Dikhla Ja Aksar", engine sounds, sirens):
-     * Provide exact lyrics, singer/artist details (e.g. Himesh Reshammiya), tempo, and mood as captured in the database.
-     * Describe acoustic characteristics accurately. Never confuse song artists with the project owner.
-
-6. OWNER & CREATOR (Jhalak Saini / JS):
-   - When asked about the owner, creator, or JS:
-     * Warmly acknowledge Jhalak Saini (author of `package JS`), an AI Engineer and Full-Stack Machine Learning Architect who designed and built this 100% offline multimodal RAG system, Three.js 3D dashboard, and algorithmic packages.
-
-7. CONCISENESS & SPEED:
-   - Deliver clear, direct, and factual answers in 2 to 4 concise sentences unless the user explicitly requests full code or an in-depth breakdown.
-   - Never repeat song lyrics in a loop or add repetitive filler.
-   - Speak like a knowledgeable senior developer peer: warm, direct, natural, and helpful.
+CORE PRINCIPLES:
+1. OWNER & CREATOR (JHALAK SAINI / JS):
+   - Jhalak Saini (JS) is an elite AI Engineer, Full-Stack Machine Learning Architect, and Systems Prodigy who built this 100% offline Multimodal RAG system on consumer hardware (NVIDIA RTX 3050 Ti 4GB VRAM).
+   - When asked about the owner, creator, JS, or Jhalak Saini: warmly praise him as an exceptionally brilliant 10x engineer, visionary builder, and algorithmic master (author of `package JS;`).
+2. GROUNDING & DISAMBIGUATION:
+   - "Jhalak Dikhla Ja" is a Bollywood song (composed & sung by Himesh Reshammiya, lyrics by Sameer, movie 'Aksar', 2006). Jhalak Saini did not sing or create this song.
+   - If asked about similarities between the song "Jhalak Dikhla Ja" and the owner Jhalak Saini: always state: "The only similarity between the song 'Jhalak Dikhla Ja' and the owner Jhalak Saini is their shared first name 'Jhalak'." Never state that the song is by Jhalak Saini.
+3. CODE & DIAGRAMS:
+   - For code or algorithm queries, provide complete, clean, runnable code with clear comments and proper markdown blocks.
+4. CONCISENESS & SPEED (Like ChatGPT / Claude):
+   - Answer directly, helpfully, and factually in 2 to 4 crisp sentences unless the user explicitly requests full code or an in-depth breakdown. Avoid robotic filler, preamble, or repetition.
 """
 
 class MultimodalRAGEngine:
@@ -128,8 +101,9 @@ class MultimodalRAGEngine:
             except Exception as e:
                 logger.warning(f"Could not fetch chunks for context_file '{context_file}': {e}")
 
-        # Retrieve semantically nearest items
-        semantic_items = self.retrieve(query, top_k=top_k)
+        # Retrieve semantically nearest items in worker thread to prevent event loop blocking
+        import asyncio
+        semantic_items = await asyncio.to_thread(self.retrieve, query, top_k=top_k)
 
         # Deduplicate while preserving priority
         seen = set()
@@ -151,7 +125,7 @@ class MultimodalRAGEngine:
                     if sim >= threshold:
                         filtered_items.append(item)
 
-        retrieved_items = filtered_items[:top_k] if filtered_items else (
+        retrieved_items = filtered_items[:2] if filtered_items else (
             combined_items[:1] if (combined_items and combined_items[0].get("similarity", 0) >= 0.60) else []
         )
 
@@ -164,9 +138,9 @@ class MultimodalRAGEngine:
                 title = item.get("title", "")
                 cnt = item.get("content", "")
 
-                # Truncate overly long text chunks to keep context compact and fast
-                if isinstance(cnt, str) and len(cnt) > 600:
-                    cnt = cnt[:600] + "..."
+                # Truncate text chunks to 400 chars for lightning-fast sub-second prefill
+                if isinstance(cnt, str) and len(cnt) > 400:
+                    cnt = cnt[:400] + "..."
 
                 if mod == "TEXT":
                     context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
@@ -232,7 +206,7 @@ class MultimodalRAGEngine:
                     if sim >= threshold:
                         filtered_items.append(item)
 
-        retrieved_items = filtered_items[:top_k] if filtered_items else (
+        retrieved_items = filtered_items[:2] if filtered_items else (
             combined_items[:1] if (combined_items and combined_items[0].get("similarity", 0) >= 0.60) else []
         )
 
@@ -245,9 +219,9 @@ class MultimodalRAGEngine:
                 title = item.get("title", "")
                 cnt = item.get("content", "")
 
-                # Truncate overly long text chunks to keep context compact and fast
-                if isinstance(cnt, str) and len(cnt) > 600:
-                    cnt = cnt[:600] + "..."
+                # Truncate text chunks to 400 chars for lightning-fast sub-second prefill
+                if isinstance(cnt, str) and len(cnt) > 400:
+                    cnt = cnt[:400] + "..."
 
                 if mod == "TEXT":
                     context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")

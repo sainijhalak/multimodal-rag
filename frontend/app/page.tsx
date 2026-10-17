@@ -166,34 +166,81 @@ export default function Home() {
 
     setLoading(true);
 
+    // Add assistant placeholder message immediately for instant ChatGPT/Claude style feedback
+    const botMsgId = 'bot-' + Date.now();
+    setMessages((prev) => [
+      ...prev,
+      { id: botMsgId, role: 'assistant', content: '', sources: [] },
+    ]);
+
+    setLoading(true);
+
     try {
-      const res = await fetch(`${apiUrl}/query/ask`, {
+      const res = await fetch(`${apiUrl}/query/ask_stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text, top_k: 4 }),
+        body: JSON.stringify({ query: text, top_k: 3 }),
       });
-      const data = await res.json();
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'bot-' + Date.now(),
-          role: 'assistant',
-          content: data.answer || 'I could not find an answer in your files.',
-          sources: (data.sources || []).filter(
-            (s: SourceItem) => s.similarity >= 0.55
-          ),
-        },
-      ]);
+      if (!res.ok) throw new Error(`Server status ${res.status}`);
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let streamedAnswer = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+
+          for (const part of parts) {
+            const trimmed = part.trim();
+            if (!trimmed.startsWith('data: ')) continue;
+            const dataStr = trimmed.slice(6).trim();
+            if (dataStr === '[DONE]') continue;
+
+            try {
+              const msg = JSON.parse(dataStr);
+              if (msg.type === 'sources') {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === botMsgId
+                      ? {
+                          ...m,
+                          sources: (msg.sources || []).filter(
+                            (s: SourceItem) => s.similarity >= 0.55
+                          ),
+                        }
+                      : m
+                  )
+                );
+              } else if (msg.type === 'token') {
+                streamedAnswer += msg.token;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === botMsgId ? { ...m, content: streamedAnswer } : m
+                  )
+                );
+              }
+            } catch {
+              // Ignore partial JSON chunks
+            }
+          }
+        }
+      }
     } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'bot-' + Date.now(),
-          role: 'assistant',
-          content: `Error connecting to AI backend: ${err.message}`,
-        },
-      ]);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === botMsgId
+            ? { ...m, content: `Error connecting to AI backend: ${err.message}` }
+            : m
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -267,24 +314,6 @@ export default function Home() {
                     Click to browse, or drag & drop files anywhere
                   </div>
                 </div>
-                <span className="text-xs text-slate-500 group-hover:text-indigo-400 transition font-medium">Browse</span>
-              </div>
-
-              {/* Suggestions */}
-              <div className="flex flex-wrap justify-center gap-2 mt-6 max-w-md mx-auto">
-                {[
-                  'Play Jhalak Dikhla Ja song',
-                  'How do I maintain my car engine and prevent wear?',
-                  'Show me the red sports car',
-                ].map((prompt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSendMessage(prompt)}
-                    className="px-3.5 py-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition"
-                  >
-                    {prompt}
-                  </button>
-                ))}
               </div>
             </div>
           )}
@@ -332,7 +361,21 @@ export default function Home() {
                 </div>
                 <div className="flex-1 space-y-3">
                   <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                    {msg.content}
+                    {msg.content ? (
+                      <>
+                        {msg.content}
+                        {loading && msg.id === messages[messages.length - 1]?.id && (
+                          <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse rounded-sm align-middle" />
+                        )}
+                      </>
+                    ) : (
+                      loading && msg.id === messages[messages.length - 1]?.id && (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-indigo-400 font-medium">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Thinking...
+                        </span>
+                      )
+                    )}
                   </div>
 
                   {msg.sources && msg.sources.length > 0 && (

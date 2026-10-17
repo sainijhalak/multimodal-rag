@@ -212,41 +212,6 @@
         </div>
       </div>
 
-      <!-- Curated Most Frequent Inquiries -->
-      <div class="space-y-1 pt-3 border-t border-inherit">
-        <div class="text-[10px] font-bold text-rose-500/80 uppercase px-2.5 py-1 tracking-wider">Frequent Inquiries</div>
-
-        <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Explain flowchart">
-          <i class="fa-solid fa-diagram-project text-xs text-rose-500 shrink-0"></i>
-          <span class="truncate">Explain Flowchart</span>
-        </button>
-
-        <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Song lyrics">
-          <i class="fa-solid fa-music text-xs text-amber-500 shrink-0"></i>
-          <span class="truncate">Jhalak Dikhla Ja Lyrics</span>
-        </button>
-
-        <button onclick="sendQuickPrompt('tell me about batman')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Batman information">
-          <i class="fa-solid fa-mask text-xs text-indigo-400 shrink-0"></i>
-          <span class="truncate">Batman Knowledge</span>
-        </button>
-
-        <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Where to put documents">
-          <i class="fa-solid fa-folder-open text-xs text-blue-400 shrink-0"></i>
-          <span class="truncate">Where to Put Files</span>
-        </button>
-
-        <button onclick="sendQuickPrompt('How do I deploy this project?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="How to deploy">
-          <i class="fa-solid fa-rocket text-xs text-emerald-400 shrink-0"></i>
-          <span class="truncate">How to Deploy</span>
-        </button>
-
-        <button onclick="sendQuickPrompt('What documents and files are stored in the database?')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-rose-950/20 transition flex items-center gap-2.5 group border border-transparent hover:border-rose-900/40" title="Database contents">
-          <i class="fa-solid fa-database text-xs text-pink-400 shrink-0"></i>
-          <span class="truncate">Database Contents</span>
-        </button>
-      </div>
-
     </div>
 
     <!-- System Badge Footer -->
@@ -339,25 +304,6 @@
             <span class="text-xs text-rose-400 font-semibold px-2.5 py-1 rounded-lg bg-rose-950/30 border border-rose-800/40 group-hover:bg-rose-900 group-hover:text-white transition">
               Browse
             </span>
-          </div>
-
-          <!-- Suggestion Chips (User's Most Frequent Requests) -->
-          <div class="flex flex-wrap justify-center gap-2 mt-6 max-w-lg mx-auto">
-            <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              📊 Explain flowchart
-            </button>
-            <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🎵 Jhalak Dikhla Ja lyrics
-            </button>
-            <button onclick="sendQuickPrompt('tell me about batman')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🦇 Batman files
-            </button>
-            <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              📁 Where to put files
-            </button>
-            <button onclick="sendQuickPrompt('How do I deploy this project?')" class="px-3.5 py-2 rounded-xl theme-card hover:border-rose-600/50 text-xs transition shadow-sm">
-              🚀 How to deploy
-            </button>
           </div>
 
         </div>
@@ -736,62 +682,6 @@
               Browse
             </span>
           </div>
-
-          <!-- Most Frequent Inquiries Grid (High Quality Cards) -->
-          <div class="mt-8 text-left max-w-2xl mx-auto">
-            <div class="text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-2.5 px-1">Frequent Inquiries</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              
-              <button onclick="sendQuickPrompt('Explain this flowchart to me')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
-                <div class="flex items-center gap-2.5 text-xs font-semibold">
-                  <i class="fa-solid fa-diagram-project text-rose-500"></i>
-                  <span>Explain Flowchart</span>
-                </div>
-                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Break down decision logic & database steps</p>
-              </button>
-
-              <button onclick="sendQuickPrompt('What are the lyrics of the song Jhalak Dikhla Ja?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
-                <div class="flex items-center gap-2.5 text-xs font-semibold">
-                  <i class="fa-solid fa-music text-amber-500"></i>
-                  <span>Jhalak Dikhla Ja Lyrics</span>
-                </div>
-                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Complete song lyrics and composition</p>
-              </button>
-
-              <button onclick="sendQuickPrompt('tell me about batman')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
-                <div class="flex items-center gap-2.5 text-xs font-semibold">
-                  <i class="fa-solid fa-mask text-indigo-400"></i>
-                  <span>Batman Knowledge</span>
-                </div>
-                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Origin, crime files, and character lore</p>
-              </button>
-
-              <button onclick="sendQuickPrompt('In which folder am I supposed to put documents to retrieve them?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
-                <div class="flex items-center gap-2.5 text-xs font-semibold">
-                  <i class="fa-solid fa-folder-open text-blue-400"></i>
-                  <span>Where to Put Files</span>
-                </div>
-                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Folder paths & 1-click Windows shortcuts</p>
-              </button>
-
-              <button onclick="sendQuickPrompt('How do I deploy this project?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
-                <div class="flex items-center gap-2.5 text-xs font-semibold">
-                  <i class="fa-solid fa-rocket text-emerald-400"></i>
-                  <span>How to Deploy</span>
-                </div>
-                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">Local GPU & production cloud guide</p>
-              </button>
-
-              <button onclick="sendQuickPrompt('What documents and files are stored in the database?')" class="p-3.5 rounded-2xl theme-card border hover:border-rose-600/60 transition text-left shadow-sm group">
-                <div class="flex items-center gap-2.5 text-xs font-semibold">
-                  <i class="fa-solid fa-database text-pink-400"></i>
-                  <span>Database Contents</span>
-                </div>
-                <p class="text-[11px] opacity-60 mt-1 line-clamp-1 leading-relaxed">All indexed files, audios, and text</p>
-              </button>
-
-            </div>
-          </div>
         </div>
       `;
     }
@@ -1002,9 +892,10 @@
         const botContent = document.getElementById(botId);
         botContent.innerHTML = '';
 
-        // AI Answer Container (streams token by token)
+        // AI Answer Container with instant ChatGPT/Claude style pulsing caret
         const answerText = document.createElement('div');
         answerText.className = 'prose-wine text-sm leading-relaxed';
+        answerText.innerHTML = '<span class="inline-block w-2 h-4 bg-rose-500 rounded-sm animate-pulse align-middle"></span>';
         botContent.appendChild(answerText);
 
         // Actions Bar (Copy button)
@@ -1033,10 +924,9 @@
 
             try {
               const msg = JSON.parse(dataStr);
-              // Zero resource cards shown as requested
               if (msg.type === 'token') {
                 fullAnswer += msg.token;
-                answerText.innerHTML = marked.parse(fullAnswer);
+                answerText.innerHTML = marked.parse(fullAnswer) + '<span class="inline-block w-2 h-4 ml-1 bg-rose-500 rounded-sm animate-pulse align-middle"></span>';
                 scrollToBottom();
               } else if (msg.type === 'error') {
                 answerText.innerHTML += `<p class="text-rose-400 text-xs mt-1">Error: ${escapeHtml(msg.error)}</p>`;
@@ -1045,6 +935,11 @@
               console.warn('SSE parse error:', err, dataStr);
             }
           }
+        }
+
+        // Final clean render removing trailing cursor
+        if (fullAnswer.trim()) {
+          answerText.innerHTML = marked.parse(fullAnswer);
         }
 
         // Save assistant answer in active session
