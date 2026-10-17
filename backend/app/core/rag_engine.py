@@ -65,8 +65,18 @@ class MultimodalRAGEngine:
         results = self.vector_store.search(query_vector, top_k=top_k, modality=modality)
         return results
 
-    async def answer(self, query: str, top_k: int = 4, context_file: Optional[str] = None) -> Dict[str, Any]:
+    async def answer(
+        self,
+        query: str,
+        top_k: int = 4,
+        context_file: Optional[str] = None,
+        system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Performs RAG: retrieves relevant chunks and asks the local LLM."""
+        from .prompts import DEFAULT_SYSTEM_PROMPT, is_conversational_query
+        active_system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
+        is_greeting = is_conversational_query(query)
+
         retrieved_items = []
 
         # If a specific file was uploaded/attached, fetch its chunks directly
@@ -91,50 +101,45 @@ class MultimodalRAGEngine:
 
         # Relevance filtering: retain top-tier matching results while eliminating distant noise
         filtered_items = []
-        if combined_items:
+        if combined_items and not is_greeting:
             top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
-            threshold = max(0.55, top_sim - 0.10)
-            for item in combined_items:
-                sim = item.get("similarity", 0)
-                if sim >= threshold:
-                    filtered_items.append(item)
+            if top_sim >= 0.60:
+                threshold = max(0.55, top_sim - 0.10)
+                for item in combined_items:
+                    sim = item.get("similarity", 0)
+                    if sim >= threshold:
+                        filtered_items.append(item)
 
-        retrieved_items = filtered_items[:top_k] if filtered_items else combined_items[:1]
-
-        # Format multimodal context with source types and timestamps
-        context_parts = []
-        for rank, item in enumerate(retrieved_items, start=1):
-            mod = item.get("modality", "text").upper()
-            src = item.get("source", "unknown")
-            title = item.get("title", "")
-            cnt = item.get("content", "")
-
-            if mod == "TEXT":
-                context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
-            elif mod == "VIDEO":
-                context_parts.append(f"[{rank}] {mod} Keyframe '{title}' (from {src})")
-            elif mod == "IMAGE":
-                context_parts.append(f"[{rank}] {mod} Image '{title}' (from {src})")
-            elif mod == "AUDIO":
-                context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
-
-        context_str = "\n\n".join(context_parts)
-
-        system_prompt = (
-            "You are a friendly, intelligent multimodal AI assistant and expert engineer. "
-            "Answer the user's question clearly, warmly, and accurately using the retrieved context below.\n"
-            "- CODE & ALGORITHMS: When the user asks for code or the context contains source code/algorithms "
-            "(e.g., reversing a number, even/odd, Java, Python), ALWAYS provide the complete, clean, well-formatted code snippet "
-            "with markdown syntax highlighting (```java) and explain step-by-step how the logic works. Never refuse to share or write code.\n"
-            "- OWNER & CREATOR: When asked about the owner, creator, or JS (Jhalak Saini), warmly highlight his achievements, "
-            "his skills as an AI engineer, his work building this offline multimodal RAG system, Java algorithms, and 3D dashboard.\n"
-            "- DIAGRAMS & FLOWCHARTS: When explaining diagrams or workflows, walk through every step, condition, and outcome clearly.\n"
-            "- SONGS: When asked about songs or lyrics, provide the lyrics and musical details.\n"
-            "- SOURCES: Cite the source file names naturally."
+        retrieved_items = filtered_items[:top_k] if filtered_items else (
+            [] if is_greeting else (
+                combined_items[:1] if (combined_items and combined_items[0].get("similarity", 0) >= 0.60) else []
+            )
         )
 
-        user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
-        response = await self.llm.generate_response(user_prompt, system_prompt=system_prompt)
+        # Format multimodal context with source types and timestamps
+        if retrieved_items:
+            context_parts = []
+            for rank, item in enumerate(retrieved_items, start=1):
+                mod = item.get("modality", "text").upper()
+                src = item.get("source", "unknown")
+                title = item.get("title", "")
+                cnt = item.get("content", "")
+
+                if mod == "TEXT":
+                    context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
+                elif mod == "VIDEO":
+                    context_parts.append(f"[{rank}] {mod} Keyframe '{title}' (from {src})")
+                elif mod == "IMAGE":
+                    context_parts.append(f"[{rank}] {mod} Image '{title}' (from {src})")
+                elif mod == "AUDIO":
+                    context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
+
+            context_str = "\n\n".join(context_parts)
+            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
+        else:
+            user_prompt = f"User Question: {query}\n\nAnswer:"
+
+        response = await self.llm.generate_response(user_prompt, system_prompt=active_system_prompt)
 
         return {
             "query": query,
@@ -142,8 +147,18 @@ class MultimodalRAGEngine:
             "sources": retrieved_items
         }
 
-    async def answer_stream(self, query: str, top_k: int = 4, context_file: Optional[str] = None):
+    async def answer_stream(
+        self,
+        query: str,
+        top_k: int = 4,
+        context_file: Optional[str] = None,
+        system_prompt: Optional[str] = None
+    ):
         """Streaming version of answer(): yields sources immediately, then streams generated tokens."""
+        from .prompts import DEFAULT_SYSTEM_PROMPT, is_conversational_query
+        active_system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
+        is_greeting = is_conversational_query(query)
+
         retrieved_items = []
 
         if context_file:
@@ -168,49 +183,43 @@ class MultimodalRAGEngine:
 
         # Relevance filtering: retain top-tier matching results while eliminating distant noise
         filtered_items = []
-        if combined_items:
+        if combined_items and not is_greeting:
             top_sim = max((item.get("similarity", 0) for item in combined_items), default=0)
-            threshold = max(0.55, top_sim - 0.10)
-            for item in combined_items:
-                sim = item.get("similarity", 0)
-                if sim >= threshold:
-                    filtered_items.append(item)
+            if top_sim >= 0.60:
+                threshold = max(0.55, top_sim - 0.10)
+                for item in combined_items:
+                    sim = item.get("similarity", 0)
+                    if sim >= threshold:
+                        filtered_items.append(item)
 
-        retrieved_items = filtered_items[:top_k] if filtered_items else combined_items[:1]
-
-        # Format context
-        context_parts = []
-        for rank, item in enumerate(retrieved_items, start=1):
-            mod = item.get("modality", "text").upper()
-            src = item.get("source", "unknown")
-            title = item.get("title", "")
-            cnt = item.get("content", "")
-
-            if mod == "TEXT":
-                context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
-            elif mod == "VIDEO":
-                context_parts.append(f"[{rank}] {mod} Keyframe '{title}' (from {src})")
-            elif mod == "IMAGE":
-                context_parts.append(f"[{rank}] {mod} Image '{title}' (from {src})")
-            elif mod == "AUDIO":
-                context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
-
-        context_str = "\n\n".join(context_parts)
-
-        system_prompt = (
-            "You are a friendly, intelligent multimodal AI assistant and expert engineer. "
-            "Answer the user's question clearly, warmly, and accurately using the retrieved context below.\n"
-            "- CODE & ALGORITHMS: When the user asks for code or the context contains source code/algorithms "
-            "(e.g., reversing a number, even/odd, Java, Python), ALWAYS provide the complete, clean, well-formatted code snippet "
-            "with markdown syntax highlighting (```java) and explain step-by-step how the logic works. Never refuse to share or write code.\n"
-            "- OWNER & CREATOR: When asked about the owner, creator, or JS (Jhalak Saini), warmly highlight his achievements, "
-            "his skills as an AI engineer, his work building this offline multimodal RAG system, Java algorithms, and 3D dashboard.\n"
-            "- DIAGRAMS & FLOWCHARTS: When explaining diagrams or workflows, walk through every step, condition, and outcome clearly.\n"
-            "- SONGS: When asked about songs or lyrics, provide the lyrics and musical details.\n"
-            "- SOURCES: Cite the source file names naturally."
+        retrieved_items = filtered_items[:top_k] if filtered_items else (
+            [] if is_greeting else (
+                combined_items[:1] if (combined_items and combined_items[0].get("similarity", 0) >= 0.60) else []
+            )
         )
 
-        user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
+        # Format context
+        if retrieved_items:
+            context_parts = []
+            for rank, item in enumerate(retrieved_items, start=1):
+                mod = item.get("modality", "text").upper()
+                src = item.get("source", "unknown")
+                title = item.get("title", "")
+                cnt = item.get("content", "")
+
+                if mod == "TEXT":
+                    context_parts.append(f"[{rank}] {mod} Content '{title}' (from {src}):\n{cnt}")
+                elif mod == "VIDEO":
+                    context_parts.append(f"[{rank}] {mod} Keyframe '{title}' (from {src})")
+                elif mod == "IMAGE":
+                    context_parts.append(f"[{rank}] {mod} Image '{title}' (from {src})")
+                elif mod == "AUDIO":
+                    context_parts.append(f"[{rank}] {mod} Audio Track '{title}' (from {src})")
+
+            context_str = "\n\n".join(context_parts)
+            user_prompt = f"Retrieved Multimodal Knowledge:\n{context_str}\n\nUser Question: {query}\n\nAnswer:"
+        else:
+            user_prompt = f"User Question: {query}\n\nAnswer:"
 
         # 1. Yield sources immediately so UI renders media cards instantly
         yield {
@@ -219,7 +228,7 @@ class MultimodalRAGEngine:
         }
 
         # 2. Stream tokens in real time
-        async for token in self.llm.stream_response(user_prompt, system_prompt=system_prompt):
+        async for token in self.llm.stream_response(user_prompt, system_prompt=active_system_prompt):
             yield {
                 "type": "token",
                 "token": token
